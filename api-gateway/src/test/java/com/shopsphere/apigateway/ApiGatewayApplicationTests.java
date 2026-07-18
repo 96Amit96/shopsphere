@@ -1,10 +1,10 @@
-package com.shopsphere.discovery_server;
+package com.shopsphere.apigateway;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class DiscoveryServerApplicationTests {
+class ApiGatewayApplicationTests {
 
 	@Test
 	void contextLoads() {
