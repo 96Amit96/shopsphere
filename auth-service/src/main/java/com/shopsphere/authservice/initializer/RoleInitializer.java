@@ -32,7 +32,7 @@ public class RoleInitializer implements CommandLineRunner {
             String description) {
 
         if (roleRepository.existsByName(roleType)) {
-            log.info("{} already exists", roleType);
+          //  log.info("{} already exists", roleType);
             return;
         }
 

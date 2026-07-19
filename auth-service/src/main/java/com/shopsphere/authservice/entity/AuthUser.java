@@ -2,9 +2,11 @@ package com.shopsphere.authservice.entity;
 
 import com.shopsphere.authservice.entity.base.BaseEntity;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -56,6 +58,16 @@ public class AuthUser extends BaseEntity {
     private Set<RefreshToken> refreshTokens = new HashSet<>();
 
     // Helper Methods
+    public void addRole(Role role) {
+        if (!this.roles.contains(role)) {
+            this.roles.add(role);
+        }
+
+        if (!role.getUsers().contains(this)) {
+            role.getUsers().add(this);
+        }
+    }
+
     public void addRefreshToken(RefreshToken token) {
         refreshTokens.add(token);
         token.setAuthUser(this);

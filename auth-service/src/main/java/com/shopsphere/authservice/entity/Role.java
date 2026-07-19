@@ -7,6 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "roles")
 @Getter
@@ -20,5 +23,19 @@ public class Role extends BaseEntity {
 
     @Column(length = 255)
     private String description;
+
+    @ManyToMany(mappedBy = "roles")
+    private Set<AuthUser> users = new HashSet<>();
+
+    // Helper methods
+    public void addUser(AuthUser user) {
+        this.users.add(user);
+        user.getRoles().add(this);
+    }
+
+    public void removeUser(AuthUser user) {
+        this.users.remove(user);
+        user.getRoles().remove(this);
+    }
 
 }
