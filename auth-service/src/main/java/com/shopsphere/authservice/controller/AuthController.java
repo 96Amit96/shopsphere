@@ -1,17 +1,16 @@
 package com.shopsphere.authservice.controller;
 
+import com.shopsphere.authservice.dto.request.LoginRequest;
 import com.shopsphere.authservice.dto.request.RegisterRequest;
 import com.shopsphere.authservice.dto.response.ApiResponse;
+import com.shopsphere.authservice.dto.response.LoginResponse;
 import com.shopsphere.authservice.dto.response.RegisterResponse;
 import com.shopsphere.authservice.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -33,6 +32,22 @@ public class AuthController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
+                .body(apiResponse);
+    }
+
+    @GetMapping("/login")
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
+
+        LoginResponse response = authService.login(request);
+
+        ApiResponse<LoginResponse> apiResponse = new ApiResponse<>(
+                true,
+                "Login successful",
+                response
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
                 .body(apiResponse);
     }
 }

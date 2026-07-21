@@ -1,6 +1,8 @@
 package com.shopsphere.authservice.service.impl;
 
+import com.shopsphere.authservice.dto.request.LoginRequest;
 import com.shopsphere.authservice.dto.request.RegisterRequest;
+import com.shopsphere.authservice.dto.response.LoginResponse;
 import com.shopsphere.authservice.dto.response.RegisterResponse;
 import com.shopsphere.authservice.entity.AuthUser;
 import com.shopsphere.authservice.entity.Role;
@@ -10,9 +12,13 @@ import com.shopsphere.authservice.exception.ResourceNotFoundException;
 import com.shopsphere.authservice.mapper.AuthUserMapper;
 import com.shopsphere.authservice.repository.AuthUserRepository;
 import com.shopsphere.authservice.repository.RoleRepository;
+import com.shopsphere.authservice.security.jwt.JwtService;
 import com.shopsphere.authservice.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,9 +31,13 @@ public class AuthServiceImpl implements AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthUserMapper authUserMapper;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+
 
     @Override
     public RegisterResponse register(RegisterRequest request) {
+        log.info("request: {}", request);
 
         if(authUserRepository.existsByUsername(request.username())) {
             throw new DuplicateResourceException("Username already exists");
@@ -61,5 +71,28 @@ public class AuthServiceImpl implements AuthService {
         AuthUser savedUser = authUserRepository.save(authUser);
 
         return authUserMapper.toRegisterResponse(savedUser);
+    }
+
+
+
+    @Override
+    public LoginResponse login(LoginRequest request) {
+
+        log.info("Login Request: {} ", request);
+
+        Authentication authentication =
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                request.email(),
+                                request.password()
+                        )
+                );
+
+        AuthUser authUser = (AuthUser) authentication.getPrincipal();
+        String accessToken = jwtService.generateToken(authUser);
+        return new LoginResponse(
+                accessToken,
+                "Bearer"
+        );
     }
 }
