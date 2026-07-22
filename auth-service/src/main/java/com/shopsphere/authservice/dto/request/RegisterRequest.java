@@ -10,8 +10,8 @@ public record RegisterRequest(
         @Size(min = 3, max = 20)
         String username,
 
-        @NotBlank
-        @Email
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
         String email,
 
         @Pattern(
