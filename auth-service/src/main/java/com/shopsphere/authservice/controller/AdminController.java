@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AdminController {
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/test")
-    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> adminTest() {
 
         return ResponseEntity.ok("Admin access granted");
