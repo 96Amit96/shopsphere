@@ -1,6 +1,7 @@
 package com.shopsphere.authservice.controller;
 
 import com.shopsphere.authservice.dto.request.LoginRequest;
+import com.shopsphere.authservice.dto.request.LogoutRequest;
 import com.shopsphere.authservice.dto.request.RefreshTokenRequest;
 import com.shopsphere.authservice.dto.request.RegisterRequest;
 import com.shopsphere.authservice.dto.response.ApiResponse;
@@ -68,5 +69,18 @@ public class AuthController {
                 .status(HttpStatus.OK)
                 .body(apiResponse);
 
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody LogoutRequest request) {
+
+        authService.logout(request.refreshToken());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Logout successful",
+                        null
+                )
+        );
     }
 }

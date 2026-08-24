@@ -150,4 +150,12 @@ public class AuthServiceImpl implements AuthService {
                 newRefreshToken
         );
     }
+
+    @Override
+    @Transactional
+    public void logout(String rawRefreshToken) {
+
+        refreshTokenService.revokeRefreshToken(rawRefreshToken);
+        log.info("User logged out successfully");
+    }
 }
