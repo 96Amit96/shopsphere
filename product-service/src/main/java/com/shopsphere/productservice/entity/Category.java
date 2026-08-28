@@ -30,6 +30,9 @@ public class Category extends BaseEntity {
     @Column(length = 500)
     private String description;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     @OneToMany(mappedBy = "category")
     private Set<Product> products = new HashSet<>();
 }

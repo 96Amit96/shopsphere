@@ -1,6 +1,7 @@
 package com.shopsphere.productservice.controller;
 
 import com.shopsphere.productservice.dto.request.CategoryCreateRequest;
+import com.shopsphere.productservice.dto.request.CategoryUpdateRequest;
 import com.shopsphere.productservice.dto.response.ApiResponse;
 import com.shopsphere.productservice.dto.response.CategoryResponse;
 import com.shopsphere.productservice.service.CategoryService;
@@ -23,7 +24,7 @@ public class CategoryController {
     @PostMapping
     public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(
             @Valid @RequestBody CategoryCreateRequest request
-            ) {
+    ) {
         CategoryResponse response = categoryService.createCategory(request);
 
         return ResponseEntity
@@ -64,4 +65,37 @@ public class CategoryController {
         );
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(
+            @PathVariable Long id,
+            @Valid @RequestBody CategoryUpdateRequest request
+    ) {
+
+        CategoryResponse response =
+                categoryService.updateCategory(id, request);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        "Category updated successfully",
+                        response
+                )
+        );
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deactivateCategory(
+            @PathVariable Long id
+    ) {
+
+        categoryService.deactivateCategory(id);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        "Category deactivated successfully",
+                        null
+                )
+        );
+    }
 }
