@@ -25,9 +25,7 @@ public record ProductUpdateRequest(
 
         @NotBlank(message = "Brand is required")
         @Size(max = 100, message = "Brand must not exceed 100 characters")
-        String brand,
+        String brand
 
-        @NotNull(message = "Product status is required")
-        ProductStatus status
 ) {
 }
