@@ -8,6 +8,7 @@ import com.shopsphere.productservice.dto.response.ProductResponse;
 import com.shopsphere.productservice.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -53,7 +54,7 @@ public class ProductController {
         );
     }
 
-    @GetMapping
+   /* @GetMapping
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts() {
 
         List<ProductResponse> products = productService.getAllProducts();
@@ -63,6 +64,25 @@ public class ProductController {
                         true,
                         "Products fetched successfully",
                         products
+                )
+        );
+    }*/
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+
+        Page<ProductResponse> responses = productService.getAllProducts(page, size, sortBy, direction);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        "Products fetched successfully",
+                        responses
                 )
         );
     }

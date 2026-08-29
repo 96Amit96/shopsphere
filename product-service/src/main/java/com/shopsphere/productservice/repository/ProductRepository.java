@@ -2,6 +2,8 @@ package com.shopsphere.productservice.repository;
 
 import com.shopsphere.productservice.entity.Product;
 import com.shopsphere.productservice.enums.ProductStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -15,5 +17,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByIdAndStatus(Long id , ProductStatus status);
 
-    List<Product> findAllByStatus(ProductStatus status);
+   // List<Product> findAllByStatus(ProductStatus status);
+
+    Page<Product> findAllByStatus(ProductStatus status , Pageable pageable);
 }
