@@ -1,6 +1,8 @@
 package com.shopsphere.productservice.service.impl;
 
+import com.shopsphere.productservice.config.ProductSortConfig;
 import com.shopsphere.productservice.dto.request.ProductCreateRequest;
+import com.shopsphere.productservice.dto.request.ProductSearchRequest;
 import com.shopsphere.productservice.dto.request.ProductStatusUpdateRequest;
 import com.shopsphere.productservice.dto.request.ProductUpdateRequest;
 import com.shopsphere.productservice.dto.response.ProductResponse;
@@ -8,20 +10,24 @@ import com.shopsphere.productservice.entity.Category;
 import com.shopsphere.productservice.entity.Product;
 import com.shopsphere.productservice.enums.ProductStatus;
 import com.shopsphere.productservice.exception.DuplicateResourceException;
+import com.shopsphere.productservice.exception.InvalidRequestException;
 import com.shopsphere.productservice.exception.ResourceNotFoundException;
 import com.shopsphere.productservice.mapper.ProductMapper;
 import com.shopsphere.productservice.repository.CategoryRepository;
 import com.shopsphere.productservice.repository.ProductRepository;
 import com.shopsphere.productservice.service.ProductService;
+import com.shopsphere.productservice.service.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -91,15 +97,141 @@ public class ProductServiceImpl implements ProductService {
         return productRepository.findAllByStatus(ProductStatus.ACTIVE, pageable).map(productMapper::toResponse);
     }
 
-//    @Override
-//    @Transactional(readOnly = true)
-//    public List<ProductResponse> getAllProducts() {
-//
-//        return productRepository.findAllByStatus(ProductStatus.ACTIVE)
-//                .stream()
-//                .map(productMapper::toResponse)
-//                .toList();
-//    }
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> searchProducts(ProductSearchRequest request) {
+
+        int page = request.page() == null ? 0 : request.page();
+        int size = request.size() == null ? 10 : request.size();
+
+        String sortBy = request.sortBy() == null
+                ? "createdAt"
+                : request.sortBy();
+
+        String direction = request.direction() == null
+                ? "desc"
+                : request.direction();
+
+        // Pagination validation
+        if (page < 0) {
+            throw new InvalidRequestException(
+                    "Page must be greater than or equal to 0"
+            );
+        }
+
+        if (size < 1 || size > 100) {
+            throw new InvalidRequestException(
+                    "Page size must be between 1 and 100"
+            );
+        }
+
+        if (request.minPrice() != null
+                && request.maxPrice() != null
+                && request.minPrice().compareTo(request.maxPrice()) > 0) {
+
+            throw new InvalidRequestException(
+                    "Minimum price must be less than or equal to maximum price"
+            );
+        }
+
+        if (request.minPrice() != null
+                && request.minPrice().compareTo(BigDecimal.ZERO) < 0) {
+
+            throw new InvalidRequestException(
+                    "Minimum price cannot be negative"
+            );
+        }
+
+        if (request.maxPrice() != null
+                && request.maxPrice().compareTo(BigDecimal.ZERO) < 0) {
+
+            throw new InvalidRequestException(
+                    "Maximum price cannot be negative"
+            );
+        }
+
+        // Sort direction validation
+        if (!direction.equalsIgnoreCase("asc")
+                && !direction.equalsIgnoreCase("desc")) {
+
+            throw new InvalidRequestException(
+                    "Sort direction must be either asc or desc"
+            );
+        }
+
+        // Sort field validation
+        if (!ProductSortConfig.ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new InvalidRequestException(
+                    "Invalid sort field: " + sortBy
+            );
+        }
+
+        Sort.Direction sortDirection =
+                Sort.Direction.fromString(direction);
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortDirection, sortBy)
+        );
+
+        Specification<Product> specification =
+                ProductSpecification.hasStatus(ProductStatus.ACTIVE);
+
+        if (request.search() != null &&
+                !request.search().isBlank()) {
+
+            specification = specification.and(
+                    ProductSpecification.search(
+                            request.search()
+                    )
+            );
+        }
+
+        if (request.categoryId() != null) {
+
+            specification = specification.and(
+                    ProductSpecification.hasCategory(
+                            request.categoryId()
+                    )
+            );
+        }
+
+        if (request.brand() != null &&
+                !request.brand().isBlank()) {
+
+            specification = specification.and(
+                    ProductSpecification.hasBrand(
+                            request.brand()
+                    )
+            );
+        }
+
+        if (request.minPrice() != null) {
+
+            specification = specification.and(
+                    ProductSpecification
+                            .priceGreaterThanOrEqualTo(
+                                    request.minPrice()
+                            )
+            );
+        }
+
+        if (request.maxPrice() != null) {
+
+            specification = specification.and(
+                    ProductSpecification
+                            .priceLessThanOrEqualTo(
+                                    request.maxPrice()
+                            )
+            );
+        }
+
+        return productRepository
+                .findAll(specification, pageable)
+                .map(productMapper::toResponse);
+    }
+
 
     @Override
     @Transactional
@@ -146,4 +278,6 @@ public class ProductServiceImpl implements ProductService {
 
         return productMapper.toResponse(updatedProduct);
     }
+
+
 }

@@ -3,6 +3,7 @@ package com.shopsphere.productservice.exception.handler;
 import com.shopsphere.productservice.dto.response.ApiResponse;
 import com.shopsphere.productservice.exception.DuplicateResourceException;
 import com.shopsphere.productservice.exception.InvalidCredentialsException;
+import com.shopsphere.productservice.exception.InvalidRequestException;
 import com.shopsphere.productservice.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -116,5 +117,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(response);
+    }
+
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidRequest(
+            InvalidRequestException ex
+    ) {
+
+        log.warn("Invalid request: {}", ex.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                ex.getMessage(),
+                                null
+                        )
+                );
     }
 }

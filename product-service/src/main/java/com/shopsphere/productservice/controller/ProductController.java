@@ -1,6 +1,7 @@
 package com.shopsphere.productservice.controller;
 
 import com.shopsphere.productservice.dto.request.ProductCreateRequest;
+import com.shopsphere.productservice.dto.request.ProductSearchRequest;
 import com.shopsphere.productservice.dto.request.ProductStatusUpdateRequest;
 import com.shopsphere.productservice.dto.request.ProductUpdateRequest;
 import com.shopsphere.productservice.dto.response.ApiResponse;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -54,35 +56,40 @@ public class ProductController {
         );
     }
 
-   /* @GetMapping
-    public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts() {
-
-        List<ProductResponse> products = productService.getAllProducts();
-
-        return ResponseEntity.ok(
-                new ApiResponse<>(
-                        true,
-                        "Products fetched successfully",
-                        products
-                )
-        );
-    }*/
-
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAllProducts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
 
-        Page<ProductResponse> responses = productService.getAllProducts(page, size, sortBy, direction);
+        ProductSearchRequest request =
+                new ProductSearchRequest(
+                        search,
+                        categoryId,
+                        brand,
+                        minPrice,
+                        maxPrice,
+                        page,
+                        size,
+                        sortBy,
+                        direction
+                );
+
+        Page<ProductResponse> response =
+                productService.searchProducts(request);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(
                         true,
                         "Products fetched successfully",
-                        responses
+                        response
                 )
         );
     }
