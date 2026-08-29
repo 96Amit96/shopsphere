@@ -112,18 +112,6 @@ public class ProductServiceImpl implements ProductService {
                 ? "desc"
                 : request.direction();
 
-        // Pagination validation
-        if (page < 0) {
-            throw new InvalidRequestException(
-                    "Page must be greater than or equal to 0"
-            );
-        }
-
-        if (size < 1 || size > 100) {
-            throw new InvalidRequestException(
-                    "Page size must be between 1 and 100"
-            );
-        }
 
         if (request.minPrice() != null
                 && request.maxPrice() != null

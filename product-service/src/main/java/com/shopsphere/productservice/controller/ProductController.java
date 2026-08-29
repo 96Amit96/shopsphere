@@ -58,29 +58,8 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAllProducts(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) String brand,
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String direction
+          @Valid ProductSearchRequest request
     ) {
-
-        ProductSearchRequest request =
-                new ProductSearchRequest(
-                        search,
-                        categoryId,
-                        brand,
-                        minPrice,
-                        maxPrice,
-                        page,
-                        size,
-                        sortBy,
-                        direction
-                );
 
         Page<ProductResponse> response =
                 productService.searchProducts(request);
