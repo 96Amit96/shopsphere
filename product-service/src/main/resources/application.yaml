@@ -28,3 +28,8 @@ management:
     web:
       exposure:
         include: health,info
+
+jwt:
+  secret: gIwzftaZLAtQbMsCROtusFXFULfPKpR+XGNQk8xf1i0=
+  expiration: 900000              # 15 minutes
+  refresh-expiration: 604800000   # 7 days

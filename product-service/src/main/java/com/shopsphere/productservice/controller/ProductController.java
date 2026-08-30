@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ public class ProductController {
 
     private final ProductService productService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct (@Valid @RequestBody ProductCreateRequest request) {
         ProductResponse response = productService.createProduct(request);
@@ -39,6 +41,7 @@ public class ProductController {
                 );
     }
 
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> getProductById(
             @PathVariable Long id
@@ -56,6 +59,7 @@ public class ProductController {
         );
     }
 
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAllProducts(
           @Valid ProductSearchRequest request
@@ -73,6 +77,7 @@ public class ProductController {
         );
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
             @PathVariable Long id,
@@ -90,6 +95,7 @@ public class ProductController {
         );
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProductStatus(
             @PathVariable Long id,

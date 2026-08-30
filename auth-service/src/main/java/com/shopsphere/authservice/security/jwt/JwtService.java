@@ -30,6 +30,14 @@ public class JwtService {
 
         Map<String, Object> claims = new HashMap<>();
 
+        claims.put(
+                "roles",
+                authUser.getRoles()
+                        .stream()
+                        .map(role -> role.getName().name())
+                        .toList()
+        );
+
         return Jwts.builder()
                 .claims(claims)
                 .subject(authUser.getEmail())
