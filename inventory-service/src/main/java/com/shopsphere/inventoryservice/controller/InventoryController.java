@@ -1,6 +1,8 @@
 package com.shopsphere.inventoryservice.controller;
 
 import com.shopsphere.inventoryservice.dto.request.InventoryCreateRequest;
+import com.shopsphere.inventoryservice.dto.request.InventoryUpdateRequest;
+import com.shopsphere.inventoryservice.dto.request.StockAdjustmentRequest;
 import com.shopsphere.inventoryservice.dto.response.ApiResponse;
 import com.shopsphere.inventoryservice.dto.response.InventoryResponse;
 import com.shopsphere.inventoryservice.service.InventoryService;
@@ -48,5 +50,46 @@ public class InventoryController {
                         response
                 )
         );
+    }
+
+    @PutMapping("/{productId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<InventoryResponse>> updateInventory(
+            @PathVariable Long productId,
+            @Valid @RequestBody InventoryUpdateRequest request
+    ) {
+
+        InventoryResponse response =
+                inventoryService.updateInventory(
+                        productId,
+                        request
+                );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Inventory updated successfully",
+                        response
+                )
+        );
+    }
+
+    @PatchMapping("/{productId}/stock")
+    public ResponseEntity<ApiResponse<InventoryResponse>> adjustStock(
+            @PathVariable Long productId,
+            @Valid @RequestBody StockAdjustmentRequest request
+            ) {
+
+        InventoryResponse response = inventoryService.adjustStock(
+                productId,
+                request
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Stock adjusted successfully",
+                        response
+                )
+        );
+
     }
 }

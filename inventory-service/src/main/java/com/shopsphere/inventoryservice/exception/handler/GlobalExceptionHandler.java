@@ -1,10 +1,8 @@
 package com.shopsphere.inventoryservice.exception.handler;
 
 import com.shopsphere.inventoryservice.dto.response.ApiResponse;
-import com.shopsphere.inventoryservice.exception.DuplicateResourceException;
-import com.shopsphere.inventoryservice.exception.InvalidCredentialsException;
-import com.shopsphere.inventoryservice.exception.InvalidRequestException;
-import com.shopsphere.inventoryservice.exception.ResourceNotFoundException;
+import com.shopsphere.inventoryservice.exception.*;
+import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -148,5 +146,42 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.failure("Access denied"));
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProductNotFound(
+            ProductNotFoundException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                ex.getMessage(),
+                                null
+                        )
+                );
+    }
+
+    @ExceptionHandler(OptimisticLockException.class)
+    public ResponseEntity<ApiResponse<Object>> handleOptimisticLockException(
+            OptimisticLockException ex
+    ){
+
+        log.warn(
+                "Inventory was modified concurrently: {}",
+                ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                "Inventory was modified by another request. Please retry.",
+                                null
+                        )
+                );
+
     }
 }
