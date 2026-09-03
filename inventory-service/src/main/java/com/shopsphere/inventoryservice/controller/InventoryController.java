@@ -1,8 +1,6 @@
 package com.shopsphere.inventoryservice.controller;
 
-import com.shopsphere.inventoryservice.dto.request.InventoryCreateRequest;
-import com.shopsphere.inventoryservice.dto.request.InventoryUpdateRequest;
-import com.shopsphere.inventoryservice.dto.request.StockAdjustmentRequest;
+import com.shopsphere.inventoryservice.dto.request.*;
 import com.shopsphere.inventoryservice.dto.response.ApiResponse;
 import com.shopsphere.inventoryservice.dto.response.InventoryResponse;
 import com.shopsphere.inventoryservice.service.InventoryService;
@@ -90,6 +88,60 @@ public class InventoryController {
                         response
                 )
         );
+    }
 
+    @PostMapping("/{productId}/reserve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<InventoryResponse>> reserveStock(
+            @PathVariable Long productId,
+            @Valid @RequestBody StockReservationRequest request
+    ) {
+
+        InventoryResponse response =
+                inventoryService.reserveStock(
+                        productId,
+                        request
+                );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Stock reserved successfully",
+                        response
+                )
+        );
+    }
+
+    @PostMapping("/{productId}/release")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<InventoryResponse>> releaseStock(
+            @PathVariable Long productId,
+            @Valid @RequestBody StockReleaseRequest request) {
+
+        InventoryResponse response =
+                inventoryService.releaseStock(productId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Stock released successfully",
+                        response
+                )
+        );
+    }
+
+    @PostMapping("/{productId}/deduct")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<InventoryResponse>> deductStock(
+            @PathVariable Long productId,
+            @Valid @RequestBody StockDeductionRequest request) {
+
+        InventoryResponse response =
+                inventoryService.deductStock(productId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Stock deducted successfully",
+                        response
+                )
+        );
     }
 }

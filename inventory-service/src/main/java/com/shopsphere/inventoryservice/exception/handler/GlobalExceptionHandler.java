@@ -182,6 +182,27 @@ public class GlobalExceptionHandler {
                                 null
                         )
                 );
+    }
 
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiResponse<Object>>
+    handleInsufficientStockException(
+            InsufficientStockException ex
+    ) {
+
+        log.warn(
+                "Insufficient stock: {}",
+                ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                ex.getMessage(),
+                                null
+                        )
+                );
     }
 }

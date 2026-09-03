@@ -1,16 +1,11 @@
 package com.shopsphere.inventoryservice.service.impl;
 
 import com.shopsphere.inventoryservice.client.ProductClient;
-import com.shopsphere.inventoryservice.dto.request.InventoryCreateRequest;
-import com.shopsphere.inventoryservice.dto.request.InventoryUpdateRequest;
-import com.shopsphere.inventoryservice.dto.request.StockAdjustmentRequest;
+import com.shopsphere.inventoryservice.dto.request.*;
 import com.shopsphere.inventoryservice.dto.response.InventoryResponse;
 import com.shopsphere.inventoryservice.dto.response.ProductResponse;
 import com.shopsphere.inventoryservice.entity.Inventory;
-import com.shopsphere.inventoryservice.exception.DuplicateResourceException;
-import com.shopsphere.inventoryservice.exception.InvalidRequestException;
-import com.shopsphere.inventoryservice.exception.ProductNotFoundException;
-import com.shopsphere.inventoryservice.exception.ResourceNotFoundException;
+import com.shopsphere.inventoryservice.exception.*;
 import com.shopsphere.inventoryservice.mapper.InventoryMapper;
 import com.shopsphere.inventoryservice.repository.InventoryRepository;
 import com.shopsphere.inventoryservice.service.InventoryService;
@@ -144,5 +139,137 @@ public class InventoryServiceImpl implements InventoryService {
         return inventoryMapper.toResponse(updatedInventory);
     }
 
+    @Override
+    @Transactional
+    public InventoryResponse reserveStock(Long productId, StockReservationRequest request) {
+
+        log.info(
+                "Reserving stock. productId:: {} , request:: {}",
+                productId,
+                request
+        );
+
+        Inventory inventory = inventoryRepository.findByProductId(productId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Inventory not found for product id :: "
+                                 + productId
+                        )
+                );
+
+        int availableQuantity = inventory.getQuantity() - inventory.getReservedQuantity();
+
+        if (request.quantity() > availableQuantity) {
+            throw new InsufficientStockException(
+                    "Insufficient stock for product id :: "
+                    + productId
+                    + ". Available quantity :: "
+                    + availableQuantity
+            );
+        }
+
+        inventory.setReservedQuantity(
+                inventory.getReservedQuantity() + request.quantity()
+        );
+
+        Inventory updatedInventory = inventoryRepository.save(inventory);
+
+        return inventoryMapper.toResponse(updatedInventory);
+    }
+
+    @Override
+    @Transactional
+    public InventoryResponse releaseStock(Long productId, StockReleaseRequest request) {
+
+        log.info(
+                "Releasing stock. productId: {}, request: {}",
+                productId,
+                request
+        );
+
+        Inventory inventory = inventoryRepository.findByProductId(productId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Inventory not found for product id :: " + productId
+                ));
+
+        int reservedQuantity = inventory.getReservedQuantity();
+
+        if (request.quantity() > reservedQuantity) {
+            throw new InvalidRequestException(
+                    "Cannot release more stock than reserved quantity :: "
+                            + reservedQuantity
+            );
+        }
+
+        inventory.setReservedQuantity(
+                reservedQuantity - request.quantity()
+        );
+
+        Inventory updatedInventory = inventoryRepository.save(inventory);
+
+        log.info(
+                "Stock released successfully. productId: {}, " +
+                        "reservedQuantity: {}, availableQuantity: {}",
+                productId,
+                updatedInventory.getReservedQuantity(),
+                updatedInventory.getQuantity()
+                        - updatedInventory.getReservedQuantity()
+        );
+
+        return inventoryMapper.toResponse(updatedInventory);
+    }
+
+    @Override
+    @Transactional
+    public InventoryResponse deductStock(
+            Long productId,
+            StockDeductionRequest request) {
+
+        log.info(
+                "Deducting stock. productId: {}, request: {}",
+                productId,
+                request
+        );
+
+        Inventory inventory = inventoryRepository.findByProductId(productId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Inventory not found for product id :: " + productId
+                ));
+
+        int quantity = inventory.getQuantity();
+        int reservedQuantity = inventory.getReservedQuantity();
+
+        log.info(
+                "Before deduction -> quantity: {}, reservedQuantity: {}, availableQuantity: {}",
+                quantity,
+                reservedQuantity,
+                quantity - reservedQuantity
+        );
+
+        if (request.quantity() > reservedQuantity) {
+            throw new InvalidRequestException(
+                    "Cannot deduct more stock than reserved quantity :: "
+                            + reservedQuantity
+            );
+        }
+
+        int newQuantity = quantity - request.quantity();
+        int newReservedQuantity = reservedQuantity - request.quantity();
+
+        inventory.setQuantity(newQuantity);
+        inventory.setReservedQuantity(newReservedQuantity);
+
+        Inventory updatedInventory = inventoryRepository.save(inventory);
+
+        log.info(
+                "After deduction -> quantity: {}, reservedQuantity: {}, availableQuantity: {}",
+                updatedInventory.getQuantity(),
+                updatedInventory.getReservedQuantity(),
+                updatedInventory.getQuantity()
+                        - updatedInventory.getReservedQuantity()
+        );
+
+        return inventoryMapper.toResponse(updatedInventory);
+    }
 
 }
