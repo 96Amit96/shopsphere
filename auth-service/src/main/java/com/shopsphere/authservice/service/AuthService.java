@@ -3,6 +3,7 @@ package com.shopsphere.authservice.service;
 import com.shopsphere.authservice.dto.request.LoginRequest;
 import com.shopsphere.authservice.dto.request.RefreshTokenRequest;
 import com.shopsphere.authservice.dto.request.RegisterRequest;
+import com.shopsphere.authservice.dto.response.CurrentUserResponse;
 import com.shopsphere.authservice.dto.response.LoginResponse;
 import com.shopsphere.authservice.dto.response.RefreshTokenResponse;
 import com.shopsphere.authservice.dto.response.RegisterResponse;
@@ -16,4 +17,6 @@ public interface AuthService {
     RefreshTokenResponse refreshToken(RefreshTokenRequest request);
 
     void logout(String refreshToken);
+
+    CurrentUserResponse getCurrentUser(String email);
 }

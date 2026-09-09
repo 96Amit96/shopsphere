@@ -26,6 +26,11 @@ spring:
               predicates:
                 - Path=/api/v1/inventory/**
 
+            - id: cart-service
+              uri: lb://CART-SERVICE
+              predicates:
+                - Path=/api/v1/cart/**
+
       discovery:
         locator:
           enabled: true

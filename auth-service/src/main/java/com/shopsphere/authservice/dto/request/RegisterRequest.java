@@ -10,6 +10,14 @@ public record RegisterRequest(
         @Size(min = 3, max = 20)
         String username,
 
+        @NotBlank(message = "First name is required")
+        @Size(min = 1, max = 20)
+        String firstName,
+
+        @NotBlank(message = "Last name is required")
+        @Size(min = 1, max = 20)
+        String lastName,
+
         @NotBlank(message = "Email is required")
         @Email(message = "Invalid email format")
         String email,
