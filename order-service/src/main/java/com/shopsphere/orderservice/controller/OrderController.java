@@ -7,10 +7,9 @@ import com.shopsphere.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,6 +29,39 @@ public class OrderController {
                 .body(
                         ApiResponse.success(
                                 "Order created successfully",
+                                response
+                        )
+                );
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyOrders() {
+
+        List<OrderResponse> response =
+                orderService.getMyOrders();
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(
+                        ApiResponse.success(
+                                "Order retrieved successfully",
+                                response
+                        )
+                );
+    }
+
+    @GetMapping("/{orderId}")
+    public ResponseEntity<ApiResponse<OrderResponse>> getMyOrder(
+            @PathVariable Long orderId) {
+
+        OrderResponse response =
+                orderService.getMyOrder(orderId);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(
+                        ApiResponse.success(
+                                "Order retrieved successfully",
                                 response
                         )
                 );

@@ -6,12 +6,15 @@ import com.shopsphere.orderservice.dto.request.CreateOrderRequest;
 import com.shopsphere.orderservice.dto.response.*;
 import com.shopsphere.orderservice.entity.Order;
 import com.shopsphere.orderservice.entity.OrderItem;
+import com.shopsphere.orderservice.exception.ResourceNotFoundException;
 import com.shopsphere.orderservice.repository.OrderRepository;
 import com.shopsphere.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -84,6 +87,43 @@ public class OrderServiceImpl implements OrderService {
 
         // 8. Map response
         return mapToOrderResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getMyOrders() {
+
+        ApiResponse<CurrentUserResponse> currentUserResponse =  userClient.getCurrentUser();
+
+        CurrentUserResponse currentUser = currentUserResponse.data();
+        log.info("Logged in user :: {}", currentUser);
+
+        Long userId = currentUser.id();
+
+        return orderRepository.findByUserId(userId)
+                .stream()
+                .map(this::mapToOrderResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponse getMyOrder(Long orderId) {
+
+        ApiResponse<CurrentUserResponse> currentUserResponse =  userClient.getCurrentUser();
+
+        CurrentUserResponse currentUser = currentUserResponse.data();
+        log.info("Logged in user :: {}", currentUser);
+
+        Long userId = currentUser.id();
+
+        Order order = orderRepository.findByIdAndUserId(orderId, userId)
+                .orElseThrow(() ->
+                       new ResourceNotFoundException(
+                               "Order not found with id :: " + orderId
+                       ));
+
+        return mapToOrderResponse(order);
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
