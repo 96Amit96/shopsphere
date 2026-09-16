@@ -250,4 +250,16 @@ public class GlobalExceptionHandler {
                         )
                 );
     }
+
+    @ExceptionHandler(InventoryReservationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInventoryReservationException(InventoryReservationException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        ApiResponse.failure(
+                                ex.getMessage()
+                        )
+                );
+    }
 }

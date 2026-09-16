@@ -1,19 +1,25 @@
 package com.shopsphere.orderservice.service.impl;
 
 import com.shopsphere.orderservice.client.CartClient;
+import com.shopsphere.orderservice.client.InventoryClient;
 import com.shopsphere.orderservice.client.UserClient;
 import com.shopsphere.orderservice.dto.request.CreateOrderRequest;
+import com.shopsphere.orderservice.dto.request.StockReservationRequest;
 import com.shopsphere.orderservice.dto.response.*;
 import com.shopsphere.orderservice.entity.Order;
 import com.shopsphere.orderservice.entity.OrderItem;
+import com.shopsphere.orderservice.enums.OrderStatus;
+import com.shopsphere.orderservice.exception.InventoryReservationException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
 import com.shopsphere.orderservice.repository.OrderRepository;
 import com.shopsphere.orderservice.service.OrderService;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -24,6 +30,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final UserClient userClient;
     private final CartClient cartClient;
+    private final InventoryClient inventoryClient;
 
     @Override
     @Transactional
@@ -85,8 +92,78 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = orderRepository.save(order);
         log.info("Saved order :: {}", savedOrder.getId());
 
+        //8. Reserve stock
+
+        List<OrderItem> reservedItems = new ArrayList<>();
+
+        try {
+            for (OrderItem item : savedOrder.getItems()) {
+                StockReservationRequest reservationRequest =
+                        new StockReservationRequest(item.getQuantity());
+
+                inventoryClient.reserveStock(
+                        item.getProductId(),
+                        reservationRequest
+                );
+
+                reservedItems.add(item);
+            }
+        } catch (FeignException ex) {
+
+            log.error(
+                    "Inventory reservation failed for orderId :: {}",
+                    savedOrder.getId(),
+                    ex
+            );
+
+            releaseReservedStock(reservedItems);
+
+            savedOrder.setOrderStatus((OrderStatus.CANCELLED));
+            orderRepository.save(savedOrder);
+
+            throw  new InventoryReservationException( "Unable to reserve inventory for order");
+        }
+
         // 8. Map response
         return mapToOrderResponse(savedOrder);
+    }
+
+
+    //Release reservedStock compensation method
+
+    private void releaseReservedStock(
+            List<OrderItem> reservedItems
+    ) {
+
+        for (OrderItem item : reservedItems) {
+
+            try {
+
+                StockReservationRequest request =
+                        new StockReservationRequest(
+                                item.getQuantity()
+                        );
+
+                inventoryClient.releaseStock(
+                        item.getProductId(),
+                        request
+                );
+
+                log.info(
+                        "Released inventory for productId :: {}, quantity :: {}",
+                        item.getProductId(),
+                        item.getQuantity()
+                );
+
+            } catch (FeignException ex) {
+
+                log.error(
+                        "Failed to release inventory for productId :: {}",
+                        item.getProductId(),
+                        ex
+                );
+            }
+        }
     }
 
     @Override
