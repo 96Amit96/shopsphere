@@ -108,12 +108,11 @@ public class OrderServiceImpl implements OrderService {
 
                 reservedItems.add(item);
             }
-        } catch (FeignException ex) {
+        } catch (InventoryReservationException ex) {
 
             log.error(
                     "Inventory reservation failed for orderId :: {}",
-                    savedOrder.getId(),
-                    ex
+                    savedOrder.getId()
             );
 
             releaseReservedStock(reservedItems);
@@ -121,7 +120,7 @@ public class OrderServiceImpl implements OrderService {
             savedOrder.setOrderStatus((OrderStatus.CANCELLED));
             orderRepository.save(savedOrder);
 
-            throw  new InventoryReservationException( "Unable to reserve inventory for order");
+            throw new InventoryReservationException( "Unable to reserve inventory for order");
         }
 
         // 8. Map response

@@ -1,6 +1,7 @@
 package com.shopsphere.orderservice.client;
 
 import com.shopsphere.orderservice.config.FeignConfig;
+import com.shopsphere.orderservice.config.FeignErrorDecoder;
 import com.shopsphere.orderservice.dto.request.StockReservationRequest;
 import com.shopsphere.orderservice.dto.response.ApiResponse;
 import com.shopsphere.orderservice.dto.response.InventoryResponse;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
         name = "inventory-service",
-        configuration = FeignConfig.class
+        configuration =  FeignConfig.class
 )
 public interface InventoryClient {
 

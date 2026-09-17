@@ -3,15 +3,34 @@ package com.shopsphere.orderservice.config;
 import com.shopsphere.orderservice.exception.*;
 import feign.Response;
 import feign.codec.ErrorDecoder;
-import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
-@Component
+@Slf4j
 public class FeignErrorDecoder implements ErrorDecoder {
 
     @Override
     public Exception decode(String methodKey, Response response) {
 
+        log.error(
+                "FeignErrorDecoder invoked :: methodKey={}, status={}",
+                methodKey,
+                response.status()
+        );
+
         int status = response.status();
+
+        if (status == 409 && methodKey.startsWith("InventoryClient#reserveStock")) {
+
+            log.error(
+                    "Inventory reservation failed :: methodKey={}, status={}",
+                    methodKey,
+                    status
+            );
+
+            return new InventoryReservationException(
+                    "Insufficient inventory while creating order"
+            );
+        }
 
         if (status == 401) {
             return new UnauthorizedException(
