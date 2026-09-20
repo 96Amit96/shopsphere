@@ -112,7 +112,7 @@ public class InventoryController {
     }
 
     @PostMapping("/{productId}/release")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<ApiResponse<InventoryResponse>> releaseStock(
             @PathVariable Long productId,
             @Valid @RequestBody StockReleaseRequest request) {

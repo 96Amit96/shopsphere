@@ -3,6 +3,7 @@ package com.shopsphere.orderservice.controller;
 import com.shopsphere.orderservice.dto.request.CreateOrderRequest;
 import com.shopsphere.orderservice.dto.response.ApiResponse;
 import com.shopsphere.orderservice.dto.response.OrderResponse;
+import com.shopsphere.orderservice.enums.PaymentStatus;
 import com.shopsphere.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -62,6 +63,46 @@ public class OrderController {
                 .body(
                         ApiResponse.success(
                                 "Order retrieved successfully",
+                                response
+                        )
+                );
+    }
+
+    @PatchMapping("/{orderId}/payment-status")
+    public ResponseEntity<ApiResponse<OrderResponse>> updatePaymentStatus(
+            @PathVariable Long orderId,
+            @RequestParam PaymentStatus paymentStatus) {
+
+        OrderResponse response =
+                orderService.updatePaymentStatus(
+                        orderId,
+                        paymentStatus
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(
+                        new ApiResponse<>(
+                                true,
+                                "Payment status updated successfully",
+                                response
+                        )
+                );
+    }
+
+    @PatchMapping("/{orderId}/payment-failed")
+    public ResponseEntity<ApiResponse<OrderResponse>> handlePaymentFailure(
+            @PathVariable Long orderId) {
+
+        OrderResponse response =
+                orderService.handlePaymentFailure(orderId);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(
+                        new ApiResponse<>(
+                                true,
+                                "Payment failure handled successfully",
                                 response
                         )
                 );

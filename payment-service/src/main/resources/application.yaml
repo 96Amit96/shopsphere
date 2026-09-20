@@ -18,6 +18,13 @@ spring:
 #      hibernate:
 #        format_sql: true
 
+cloud:
+  openfeign:
+    httpclient:
+      hc5:
+        enabled: true
+
+
 eureka:
   client:
     service-url:

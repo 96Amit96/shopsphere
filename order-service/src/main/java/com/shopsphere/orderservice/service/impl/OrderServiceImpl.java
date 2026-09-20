@@ -9,6 +9,7 @@ import com.shopsphere.orderservice.dto.response.*;
 import com.shopsphere.orderservice.entity.Order;
 import com.shopsphere.orderservice.entity.OrderItem;
 import com.shopsphere.orderservice.enums.OrderStatus;
+import com.shopsphere.orderservice.enums.PaymentStatus;
 import com.shopsphere.orderservice.exception.InventoryReservationException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
 import com.shopsphere.orderservice.repository.OrderRepository;
@@ -200,6 +201,78 @@ public class OrderServiceImpl implements OrderService {
                        ));
 
         return mapToOrderResponse(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse updatePaymentStatus(Long orderId, PaymentStatus paymentStatus) {
+
+        log.info(
+                "Updating payment status for orderId :: {}, paymentStatus :: {}",
+                orderId,
+                paymentStatus
+        );
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found with id :: " + orderId
+                        )
+                );
+        order.setPaymentStatus(paymentStatus);
+        Order updatedOrder =
+                orderRepository.save(order);
+        log.info(
+                "Payment status updated successfully for orderId :: {}",
+                orderId
+        );
+
+        return mapToOrderResponse(updatedOrder);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse handlePaymentFailure(Long orderId) {
+
+        log.info(
+                "Handling payment failure for orderId :: {}",
+                orderId
+        );
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found with id :: " + orderId
+                        )
+                );
+
+        // Prevent duplicate compensation
+        if (order.getPaymentStatus() == PaymentStatus.FAILED
+                && order.getOrderStatus() == OrderStatus.CANCELLED) {
+
+            log.info(
+                    "Payment failure already handled for orderId :: {}",
+                    orderId
+            );
+
+            return mapToOrderResponse(order);
+        }
+
+        // Release reserved inventory
+        releaseReservedStock(order.getItems());
+
+        // Update statuses
+        order.setPaymentStatus(PaymentStatus.FAILED);
+        order.setOrderStatus(OrderStatus.CANCELLED);
+
+        Order updatedOrder =
+                orderRepository.save(order);
+
+        log.info(
+                "Payment failure handled successfully. orderId :: {}",
+                orderId
+        );
+
+        return mapToOrderResponse(updatedOrder);
     }
 
     private OrderResponse mapToOrderResponse(Order order) {

@@ -3,15 +3,13 @@ package com.shopsphere.paymentservice.service.impl;
 import com.shopsphere.paymentservice.client.OrderClient;
 import com.shopsphere.paymentservice.client.UserClient;
 import com.shopsphere.paymentservice.dto.request.PaymentRequest;
-import com.shopsphere.paymentservice.dto.response.ApiResponse;
-import com.shopsphere.paymentservice.dto.response.CurrentUserResponse;
-import com.shopsphere.paymentservice.dto.response.OrderResponse;
-import com.shopsphere.paymentservice.dto.response.PaymentResponse;
+import com.shopsphere.paymentservice.dto.response.*;
 import com.shopsphere.paymentservice.entity.Payment;
 import com.shopsphere.paymentservice.enums.PaymentStatus;
 import com.shopsphere.paymentservice.exception.DuplicatePaymentException;
 import com.shopsphere.paymentservice.exception.PaymentNotFoundException;
 import com.shopsphere.paymentservice.exception.PaymentValidationException;
+import com.shopsphere.paymentservice.gateway.PaymentGateway;
 import com.shopsphere.paymentservice.mapper.PaymentMapper;
 import com.shopsphere.paymentservice.repository.PaymentRepository;
 import com.shopsphere.paymentservice.service.PaymentService;
@@ -31,6 +29,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserClient userClient;
     private final PaymentMapper paymentMapper;
     private final OrderClient orderClient;
+    private final PaymentGateway paymentGateway;
 
     @Override
     @Transactional
@@ -131,10 +130,15 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.getOrderId()
         );
 
-        boolean paymentSuccessful = true;
+        PaymentGatewayResponse gatewayResponse =
+                paymentGateway.processPayment(payment);
 
-        if (paymentSuccessful) {
+        log.info("Payment response :: {} ", gatewayResponse);
+
+        if (gatewayResponse.successful()) {
             payment.setPaymentStatus(PaymentStatus.SUCCESS);
+
+            orderClient.updatePaymentStatus(payment.getOrderId(), PaymentStatus.SUCCESS);
 
             log.info(
                     "Payment successful. paymentId :: {}",
@@ -143,6 +147,8 @@ public class PaymentServiceImpl implements PaymentService {
 
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
+
+            orderClient.handlePaymentFailure(payment.getOrderId());
 
             log.error(
                     "Payment failed. paymentId :: {}",
