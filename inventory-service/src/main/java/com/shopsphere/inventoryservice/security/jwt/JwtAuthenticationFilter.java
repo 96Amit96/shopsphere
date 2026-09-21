@@ -45,9 +45,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
 
-            String email = jwtService.extractUsername(jwt);
+            String tokenType = jwtService.extractTokenType(jwt);
 
-            List<String> roles = jwtService.extractRoles(jwt);
+            // Internal service-to-service token
+            if ("SERVICE".equals(tokenType)) {
+
+                String serviceName =
+                        jwtService.extractUsername(jwt);
+
+                if (!jwtService.isTokenExpired(jwt)) {
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    serviceName,
+                                    null,
+                                    List.of(
+                                            new SimpleGrantedAuthority(
+                                                    "INTERNAL_SERVICE"
+                                            )
+                                    )
+                            );
+
+                    SecurityContextHolder
+                            .getContext()
+                            .setAuthentication(authentication);
+
+                    log.debug(
+                            "Authenticated internal service :: {}",
+                            serviceName
+                    );
+                }
+
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // Normal user JWT
+            String email =
+                    jwtService.extractUsername(jwt);
+
+            List<String> roles =
+                    jwtService.extractRoles(jwt);
 
             List<SimpleGrantedAuthority> authorities =
                     roles.stream()

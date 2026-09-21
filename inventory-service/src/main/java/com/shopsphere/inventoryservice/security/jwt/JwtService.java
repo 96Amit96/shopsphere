@@ -77,4 +77,10 @@ public class JwtService {
         return extractExpiration(token)
                 .before(new Date());
     }
+
+    public String extractTokenType(String token) {
+
+        return extractAllClaims(token)
+                .get("tokenType", String.class);
+    }
 }

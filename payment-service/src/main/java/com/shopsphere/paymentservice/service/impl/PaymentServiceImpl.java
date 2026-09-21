@@ -2,6 +2,7 @@ package com.shopsphere.paymentservice.service.impl;
 
 import com.shopsphere.paymentservice.client.OrderClient;
 import com.shopsphere.paymentservice.client.UserClient;
+import com.shopsphere.paymentservice.dto.event.PaymentEvent;
 import com.shopsphere.paymentservice.dto.request.PaymentRequest;
 import com.shopsphere.paymentservice.dto.response.*;
 import com.shopsphere.paymentservice.entity.Payment;
@@ -10,6 +11,7 @@ import com.shopsphere.paymentservice.exception.DuplicatePaymentException;
 import com.shopsphere.paymentservice.exception.PaymentNotFoundException;
 import com.shopsphere.paymentservice.exception.PaymentValidationException;
 import com.shopsphere.paymentservice.gateway.PaymentGateway;
+import com.shopsphere.paymentservice.kafka.PaymentEventProducer;
 import com.shopsphere.paymentservice.mapper.PaymentMapper;
 import com.shopsphere.paymentservice.repository.PaymentRepository;
 import com.shopsphere.paymentservice.service.PaymentService;
@@ -30,6 +32,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final OrderClient orderClient;
     private final PaymentGateway paymentGateway;
+    private final PaymentEventProducer paymentEventProducer;
 
     @Override
     @Transactional
@@ -138,7 +141,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (gatewayResponse.successful()) {
             payment.setPaymentStatus(PaymentStatus.SUCCESS);
 
-            orderClient.updatePaymentStatus(payment.getOrderId(), PaymentStatus.SUCCESS);
+        //    orderClient.updatePaymentStatus(payment.getOrderId(), PaymentStatus.SUCCESS);
 
             log.info(
                     "Payment successful. paymentId :: {}",
@@ -148,7 +151,7 @@ public class PaymentServiceImpl implements PaymentService {
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
 
-            orderClient.handlePaymentFailure(payment.getOrderId());
+         //   orderClient.handlePaymentFailure(payment.getOrderId());
 
             log.error(
                     "Payment failed. paymentId :: {}",
@@ -156,9 +159,21 @@ public class PaymentServiceImpl implements PaymentService {
             );
         }
 
-        Payment updatedPayment = paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
 
-        return paymentMapper.toPaymentResponse(updatedPayment);
+        PaymentEvent paymentEvent = new PaymentEvent(
+                savedPayment.getId(),
+                savedPayment.getOrderId(),
+                savedPayment.getUserId(),
+                savedPayment.getAmount(),
+                savedPayment.getPaymentStatus(),
+                savedPayment.getTransactionId()
+
+        );
+
+        paymentEventProducer.publishPaymentEvent(paymentEvent);
+
+        return paymentMapper.toPaymentResponse(savedPayment);
     }
 
 }
