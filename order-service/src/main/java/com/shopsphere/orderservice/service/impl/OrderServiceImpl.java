@@ -157,7 +157,7 @@ public class OrderServiceImpl implements OrderService {
 
             } catch (FeignException ex) {
 
-                log.error(
+                log.info(
                         "Failed to release inventory for productId :: {}",
                         item.getProductId(),
                         ex
@@ -218,7 +218,16 @@ public class OrderServiceImpl implements OrderService {
                                 "Order not found with id :: " + orderId
                         )
                 );
-        order.setPaymentStatus(paymentStatus);
+
+        if (paymentStatus == PaymentStatus.SUCCESS) {
+
+            if (order.getOrderStatus() == OrderStatus.CANCELLED) {
+                throw new IllegalStateException("Cannot confirm a cancelled order :: " + orderId);
+            }
+            order.setPaymentStatus(PaymentStatus.SUCCESS);
+            order.setOrderStatus(OrderStatus.CONFIRMED);
+        }
+
         Order updatedOrder =
                 orderRepository.save(order);
         log.info(

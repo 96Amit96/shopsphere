@@ -21,15 +21,4 @@ public interface OrderClient {
     ApiResponse<OrderResponse> getOrderById(
             @PathVariable("orderId") Long orderId
     );
-
-    @PatchMapping("/api/v1/orders/{orderId}/payment-status")
-    ApiResponse<OrderResponse> updatePaymentStatus(
-            @PathVariable("orderId") Long orderId,
-            @RequestParam PaymentStatus paymentStatus
-            );
-
-    @PatchMapping("/api/v1/orders/{orderId}/payment-failed")
-    ApiResponse<OrderResponse> handlePaymentFailure(
-            @PathVariable("orderId") Long orderId
-    );
 }

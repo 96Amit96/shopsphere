@@ -67,44 +67,4 @@ public class OrderController {
                         )
                 );
     }
-
-    @PatchMapping("/{orderId}/payment-status")
-    public ResponseEntity<ApiResponse<OrderResponse>> updatePaymentStatus(
-            @PathVariable Long orderId,
-            @RequestParam PaymentStatus paymentStatus) {
-
-        OrderResponse response =
-                orderService.updatePaymentStatus(
-                        orderId,
-                        paymentStatus
-                );
-
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(
-                        new ApiResponse<>(
-                                true,
-                                "Payment status updated successfully",
-                                response
-                        )
-                );
-    }
-
-    @PatchMapping("/{orderId}/payment-failed")
-    public ResponseEntity<ApiResponse<OrderResponse>> handlePaymentFailure(
-            @PathVariable Long orderId) {
-
-        OrderResponse response =
-                orderService.handlePaymentFailure(orderId);
-
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(
-                        new ApiResponse<>(
-                                true,
-                                "Payment failure handled successfully",
-                                response
-                        )
-                );
-    }
 }

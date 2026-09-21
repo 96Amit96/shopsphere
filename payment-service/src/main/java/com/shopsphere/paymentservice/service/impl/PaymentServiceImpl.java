@@ -141,8 +141,6 @@ public class PaymentServiceImpl implements PaymentService {
         if (gatewayResponse.successful()) {
             payment.setPaymentStatus(PaymentStatus.SUCCESS);
 
-        //    orderClient.updatePaymentStatus(payment.getOrderId(), PaymentStatus.SUCCESS);
-
             log.info(
                     "Payment successful. paymentId :: {}",
                     payment.getId()
@@ -150,8 +148,6 @@ public class PaymentServiceImpl implements PaymentService {
 
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
-
-         //   orderClient.handlePaymentFailure(payment.getOrderId());
 
             log.error(
                     "Payment failed. paymentId :: {}",

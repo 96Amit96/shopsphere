@@ -91,7 +91,7 @@ public class InventoryController {
     }
 
     @PostMapping("/{productId}/reserve")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+  //  @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<ApiResponse<InventoryResponse>> reserveStock(
             @PathVariable Long productId,
             @Valid @RequestBody StockReservationRequest request
@@ -112,7 +112,7 @@ public class InventoryController {
     }
 
     @PostMapping("/{productId}/release")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+   // @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<ApiResponse<InventoryResponse>> releaseStock(
             @PathVariable Long productId,
             @Valid @RequestBody StockReleaseRequest request) {
@@ -129,7 +129,7 @@ public class InventoryController {
     }
 
     @PostMapping("/{productId}/deduct")
-    @PreAuthorize("hasRole('ADMIN')")
+   // @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<InventoryResponse>> deductStock(
             @PathVariable Long productId,
             @Valid @RequestBody StockDeductionRequest request) {
