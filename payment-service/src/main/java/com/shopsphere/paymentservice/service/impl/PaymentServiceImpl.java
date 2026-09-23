@@ -1,18 +1,22 @@
 package com.shopsphere.paymentservice.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopsphere.paymentservice.client.OrderClient;
 import com.shopsphere.paymentservice.client.UserClient;
 import com.shopsphere.paymentservice.dto.event.PaymentEvent;
 import com.shopsphere.paymentservice.dto.request.PaymentRequest;
 import com.shopsphere.paymentservice.dto.response.*;
+import com.shopsphere.paymentservice.entity.OutboxEvent;
 import com.shopsphere.paymentservice.entity.Payment;
+import com.shopsphere.paymentservice.enums.OutboxStatus;
 import com.shopsphere.paymentservice.enums.PaymentStatus;
 import com.shopsphere.paymentservice.exception.DuplicatePaymentException;
 import com.shopsphere.paymentservice.exception.PaymentNotFoundException;
 import com.shopsphere.paymentservice.exception.PaymentValidationException;
 import com.shopsphere.paymentservice.gateway.PaymentGateway;
-import com.shopsphere.paymentservice.kafka.PaymentEventProducer;
 import com.shopsphere.paymentservice.mapper.PaymentMapper;
+import com.shopsphere.paymentservice.repository.OutboxEventRepository;
 import com.shopsphere.paymentservice.repository.PaymentRepository;
 import com.shopsphere.paymentservice.service.PaymentService;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +36,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final OrderClient orderClient;
     private final PaymentGateway paymentGateway;
-    private final PaymentEventProducer paymentEventProducer;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -167,7 +172,26 @@ public class PaymentServiceImpl implements PaymentService {
 
         );
 
-        paymentEventProducer.publishPaymentEvent(paymentEvent);
+        try {
+
+            OutboxEvent outboxEvent = new OutboxEvent();
+
+            outboxEvent.setEventType("PAYMENT_EVENT");
+            outboxEvent.setAggregateType("PAYMENT");
+            outboxEvent.setAggregateId(
+                    savedPayment.getId()
+            );
+            outboxEvent.setPayload(
+                    objectMapper.writeValueAsString(paymentEvent)
+            );
+            outboxEvent.setStatus(OutboxStatus.PENDING);
+
+            outboxEventRepository.save(outboxEvent);
+
+
+        } catch (JsonProcessingException ex) {
+            throw new PaymentValidationException("Failed to create payment outbox event");
+        }
 
         return paymentMapper.toPaymentResponse(savedPayment);
     }
