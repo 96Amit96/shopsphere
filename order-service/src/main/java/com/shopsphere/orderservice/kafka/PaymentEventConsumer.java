@@ -18,39 +18,17 @@ public class PaymentEventConsumer {
             topics = "payment-events",
             groupId = "order-service"
     )
-    public void consumePaymentEvent(PaymentEvent event) {
+    public void consumePaymentEvent(
+            PaymentEvent event
+    ) {
 
         log.info(
-                "Payment event received. paymentId :: {}, orderId :: {}, status :: {}",
-                event.paymentId(),
+                "Payment event received. eventId :: {}, orderId :: {}, status :: {}",
+                event.eventId(),
                 event.orderId(),
                 event.paymentStatus()
         );
 
-        switch (event.paymentStatus()) {
-
-            case SUCCESS -> {
-                log.info(
-                        "Processing successful payment event for orderId :: {}",
-                        event.orderId()
-                );
-                orderService.updatePaymentStatus(
-                        event.orderId(),
-                        event.paymentStatus()
-                );
-            }
-
-            case FAILED -> {
-                log.info(
-                        "Processing failed payment event for orderId :: {}",
-                        event.orderId()
-                );
-
-                orderService.handlePaymentFailure(event.orderId());
-            }
-
-            default -> log.info("Ignoring payment event with status :: {}",
-                    event.paymentStatus());
-        }
+        orderService.processPaymentEvent(event);
     }
 }

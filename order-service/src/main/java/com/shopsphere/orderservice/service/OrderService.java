@@ -1,5 +1,6 @@
 package com.shopsphere.orderservice.service;
 
+import com.shopsphere.orderservice.dto.event.PaymentEvent;
 import com.shopsphere.orderservice.dto.request.CreateOrderRequest;
 import com.shopsphere.orderservice.dto.response.OrderResponse;
 import com.shopsphere.orderservice.enums.PaymentStatus;
@@ -20,4 +21,6 @@ public interface OrderService {
     );
 
     OrderResponse handlePaymentFailure(Long orderId);
+
+    void processPaymentEvent(PaymentEvent event);
 }

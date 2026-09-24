@@ -126,9 +126,28 @@ public class PaymentServiceImpl implements PaymentService {
                         );
 
         if (payment.getPaymentStatus() != PaymentStatus.PENDING) {
+
+            log.info(
+                    "Payment already successful. Returning existing payment. paymentId :: {}",
+                    paymentId
+            );
+
+            return paymentMapper.toPaymentResponse(payment);
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.REFUNDED) {
+
             throw new PaymentValidationException(
-                    "Payment cannot be processed because current status is :: "
-                    + payment.getPaymentStatus()
+                    "Refunded payment cannot be processed again. paymentId :: "
+                            + paymentId
+            );
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.FAILED) {
+
+            throw new PaymentValidationException(
+                    "Payment has already failed. Explicit retry is required. paymentId :: "
+                            + paymentId
             );
         }
 
@@ -162,20 +181,23 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        PaymentEvent paymentEvent = new PaymentEvent(
-                savedPayment.getId(),
-                savedPayment.getOrderId(),
-                savedPayment.getUserId(),
-                savedPayment.getAmount(),
-                savedPayment.getPaymentStatus(),
-                savedPayment.getTransactionId()
-
-        );
-
         try {
 
+            UUID eventId = UUID.randomUUID();
             OutboxEvent outboxEvent = new OutboxEvent();
 
+            PaymentEvent paymentEvent = new PaymentEvent(
+                    eventId,
+                    savedPayment.getId(),
+                    savedPayment.getOrderId(),
+                    savedPayment.getUserId(),
+                    savedPayment.getAmount(),
+                    savedPayment.getPaymentStatus(),
+                    savedPayment.getTransactionId()
+
+            );
+
+            outboxEvent.setId(eventId);
             outboxEvent.setEventType("PAYMENT_EVENT");
             outboxEvent.setAggregateType("PAYMENT");
             outboxEvent.setAggregateId(
@@ -187,7 +209,6 @@ public class PaymentServiceImpl implements PaymentService {
             outboxEvent.setStatus(OutboxStatus.PENDING);
 
             outboxEventRepository.save(outboxEvent);
-
 
         } catch (JsonProcessingException ex) {
             throw new PaymentValidationException("Failed to create payment outbox event");

@@ -3,16 +3,19 @@ package com.shopsphere.orderservice.service.impl;
 import com.shopsphere.orderservice.client.CartClient;
 import com.shopsphere.orderservice.client.InventoryClient;
 import com.shopsphere.orderservice.client.UserClient;
+import com.shopsphere.orderservice.dto.event.PaymentEvent;
 import com.shopsphere.orderservice.dto.request.CreateOrderRequest;
 import com.shopsphere.orderservice.dto.request.StockReservationRequest;
 import com.shopsphere.orderservice.dto.response.*;
 import com.shopsphere.orderservice.entity.Order;
 import com.shopsphere.orderservice.entity.OrderItem;
+import com.shopsphere.orderservice.entity.ProcessedEvent;
 import com.shopsphere.orderservice.enums.OrderStatus;
 import com.shopsphere.orderservice.enums.PaymentStatus;
 import com.shopsphere.orderservice.exception.InventoryReservationException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
 import com.shopsphere.orderservice.repository.OrderRepository;
+import com.shopsphere.orderservice.repository.ProcessedEventRepository;
 import com.shopsphere.orderservice.service.OrderService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,6 +36,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserClient userClient;
     private final CartClient cartClient;
     private final InventoryClient inventoryClient;
+    private final ProcessedEventRepository processedEventRepository;
 
     @Override
     @Transactional
@@ -282,6 +287,63 @@ public class OrderServiceImpl implements OrderService {
         );
 
         return mapToOrderResponse(updatedOrder);
+    }
+
+    @Override
+    @Transactional
+    public void processPaymentEvent(PaymentEvent event) {
+
+        log.info(
+                "Processing payment event. eventId :: {}, orderId :: {}, status :: {}",
+                event.eventId(),
+                event.orderId(),
+                event.paymentStatus()
+        );
+
+        // 1. Idempotency check
+        if (processedEventRepository.existsById(event.eventId())) {
+            log.info(
+                    "Payment event already processed. eventId :: {}",
+                    event.eventId()
+            );
+
+            return;
+        }
+
+        // 2. Process business event
+        switch (event.paymentStatus()) {
+
+            case SUCCESS -> updatePaymentStatus(
+                    event.orderId(),
+                    PaymentStatus.SUCCESS
+            );
+
+            case FAILED -> handlePaymentFailure(
+                    event.orderId()
+            );
+
+            default -> log.info(
+                    "Ignoring payment event with status :: {}",
+                    event.paymentStatus()
+            );
+        }
+
+        // 3. Record event as processed
+        ProcessedEvent processedEvent =
+                new ProcessedEvent();
+
+        processedEvent.setEventId(
+                event.eventId()
+        );
+
+        processedEvent.setProcessedAt(
+                LocalDateTime.now()
+        );
+
+        processedEventRepository.save(
+                processedEvent
+        );
+
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
