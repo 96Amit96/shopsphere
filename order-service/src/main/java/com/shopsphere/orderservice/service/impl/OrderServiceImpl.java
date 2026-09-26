@@ -13,6 +13,7 @@ import com.shopsphere.orderservice.entity.ProcessedEvent;
 import com.shopsphere.orderservice.enums.OrderStatus;
 import com.shopsphere.orderservice.enums.PaymentStatus;
 import com.shopsphere.orderservice.exception.InventoryReservationException;
+import com.shopsphere.orderservice.exception.InventoryServiceUnavailableException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
 import com.shopsphere.orderservice.repository.OrderRepository;
 import com.shopsphere.orderservice.repository.ProcessedEventRepository;
@@ -47,7 +48,7 @@ public class OrderServiceImpl implements OrderService {
         // 1. Get authenticated user
         ApiResponse<CurrentUserResponse> currentUserResponse
                 = userClient.getCurrentUser();
-        log.info("Current user :: {}", currentUserResponse.data());
+
         Long userId = currentUserResponse.data().id();
 
         // 2. Get user's cart
@@ -116,7 +117,7 @@ public class OrderServiceImpl implements OrderService {
             }
         } catch (InventoryReservationException ex) {
 
-            log.error(
+            log.info(
                     "Inventory reservation failed for orderId :: {}",
                     savedOrder.getId()
             );
@@ -127,6 +128,24 @@ public class OrderServiceImpl implements OrderService {
             orderRepository.save(savedOrder);
 
             throw new InventoryReservationException( "Unable to reserve inventory for order");
+        } catch (InventoryServiceUnavailableException ex) {
+            // Feign + Resilience4j fallback
+            log.error(
+                    "Inventory service unavailable for orderId :: {}",
+                    savedOrder.getId(),
+                    ex.getMessage()
+            );
+
+            // Release any stock that may already have been reserved
+            releaseReservedStock(reservedItems);
+
+            savedOrder.setOrderStatus(OrderStatus.CANCELLED);
+            orderRepository.save(savedOrder);
+
+            throw new InventoryServiceUnavailableException(
+                    "Inventory service is currently unavailable. "
+                            + "Order cannot be created at the moment."
+            );
         }
 
         // 8. Map response

@@ -14,7 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
         name = "inventory-service",
-        configuration =  InventoryFeignConfig.class
+        configuration =  InventoryFeignConfig.class,
+        fallbackFactory = InventoryClientFallbackFactory.class
 )
 public interface InventoryClient {
 

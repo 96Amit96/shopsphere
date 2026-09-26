@@ -13,11 +13,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-#    show-sql: true
-#    properties:
-#      hibernate:
-#        format_sql: true
-
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -31,21 +26,28 @@ spring:
 
       properties:
         "[spring.deserializer.key.delegate.class]": org.apache.kafka.common.serialization.StringDeserializer
-
         "[spring.deserializer.value.delegate.class]": org.springframework.kafka.support.serializer.JsonDeserializer
-
         "[spring.json.value.default.type]": com.shopsphere.orderservice.dto.event.PaymentEvent
-
         "[spring.json.trusted.packages]": com.shopsphere.orderservice.dto.event
-
         "[spring.json.use.type.headers]": false
 
-      producer:
-        key-serializer: org.apache.kafka.common.serialization.StringSerializer
-        value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-        properties:
-            "[spring.json.add.type.headers]": false
+      properties:
+        "[spring.json.add.type.headers]": false
+
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+        alphanumeric-ids:
+          enabled: true
+
+    circuitbreaker:
+      resilience4j:
+        disable-time-limiter: true
 
 eureka:
   client:
@@ -60,31 +62,21 @@ management:
       exposure:
         include: health,info
 
-  cloud:
-    openfeign:
-      circuitbreaker:
-        enabled: true
-        alphanumeric-ids:
-          enabled: true
-
-    circuitbreaker:
-      resilience4j:
-        disable-time-limiter: true
-
-    resilience4j:
-      circuitbreaker:
-        instances:
-          InventoryClientreserveStock:
-            registerHealthIndicator: true
-            slidingWindowType: COUNT_BASED
-            slidingWindowSize: 4
-            minimumNumberOfCalls: 4
-            failureRateThreshold: 50
-            waitDurationInOpenState: 10s
-            permittedNumberOfCallsInHalfOpenState: 2
-
+resilience4j:
+  circuitbreaker:
+    instances:
+      InventoryClientreserveStockLongStockReservationRequest:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 4
+        minimumNumberOfCalls: 4
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 2
 
 jwt:
   secret: gIwzftaZLAtQbMsCROtusFXFULfPKpR+XGNQk8xf1i0=
-  expiration: 900000              # 15 minutes
-  refresh-expiration: 604800000   # 7 days
+  expiration: 900000
+  refresh-expiration: 604800000
+
+

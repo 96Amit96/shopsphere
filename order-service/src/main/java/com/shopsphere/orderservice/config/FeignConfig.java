@@ -32,7 +32,6 @@ public class FeignConfig {
             String authorization =
                     request.getHeader("Authorization");
 
-        log.info("Authorisation {}", authorization);
 
             if (authorization != null && !authorization.isBlank()) {
                 requestTemplate.header("Authorization", authorization);
