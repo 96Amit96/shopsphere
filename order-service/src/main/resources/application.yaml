@@ -74,13 +74,16 @@ resilience4j:
         waitDurationInOpenState: 10s
         permittedNumberOfCallsInHalfOpenState: 2
 
-retry:
-  instances:
-    inventoryReservationRetry:
-      maxAttempts: 3
-      waitDuration: 2s
-      retryExceptions:
-        - com.shopsphere.orderservice.exception.InventoryServiceUnavailableException
+  retry:
+    instances:
+      inventoryReservationRetry:
+        maxAttempts: 3
+        waitDuration: 2s
+        retryExceptions:
+          - com.shopsphere.orderservice.exception.InventoryServiceUnavailableException
+
+        ignoreExceptions:
+          - com.shopsphere.orderservice.exception.InventoryCircuitOpenException
 
 jwt:
   secret: gIwzftaZLAtQbMsCROtusFXFULfPKpR+XGNQk8xf1i0=

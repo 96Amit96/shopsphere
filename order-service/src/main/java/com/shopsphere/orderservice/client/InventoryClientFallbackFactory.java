@@ -3,7 +3,9 @@ package com.shopsphere.orderservice.client;
 import com.shopsphere.orderservice.dto.request.StockReservationRequest;
 import com.shopsphere.orderservice.dto.response.ApiResponse;
 import com.shopsphere.orderservice.dto.response.InventoryResponse;
+import com.shopsphere.orderservice.exception.InventoryCircuitOpenException;
 import com.shopsphere.orderservice.exception.InventoryServiceUnavailableException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.http.ResponseEntity;
@@ -23,16 +25,40 @@ public class InventoryClientFallbackFactory implements FallbackFactory<Inventory
         );
 
         return new InventoryClient() {
-            @Override
-            public ResponseEntity<ApiResponse<InventoryResponse>> reserveStock(Long productId, StockReservationRequest request) {
 
-                throw new InventoryServiceUnavailableException( "Inventory service is currently unavailable");
+            @Override
+            public ResponseEntity<ApiResponse<InventoryResponse>> reserveStock(
+                    Long productId,
+                    StockReservationRequest request) {
+
+                if (cause instanceof CallNotPermittedException) {
+
+                    throw new InventoryCircuitOpenException(
+                            "Inventory circuit breaker is OPEN"
+                    );
+                }
+
+                throw new InventoryServiceUnavailableException(
+                        "Inventory service is currently unavailable"
+                );
             }
 
-            @Override
-            public void releaseStock(Long productId, StockReservationRequest request) {
 
-                throw new InventoryServiceUnavailableException( "Inventory service is currently unavailable");
+            @Override
+            public void releaseStock(
+                    Long productId,
+                    StockReservationRequest request) {
+
+                if (cause instanceof CallNotPermittedException) {
+
+                    throw new InventoryCircuitOpenException(
+                            "Inventory circuit breaker is OPEN"
+                    );
+                }
+
+                throw new InventoryServiceUnavailableException(
+                        "Inventory service is currently unavailable"
+                );
             }
         };
     }

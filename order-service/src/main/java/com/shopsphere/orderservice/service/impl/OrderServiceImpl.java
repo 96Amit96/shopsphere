@@ -199,7 +199,6 @@ public class OrderServiceImpl implements OrderService {
         ApiResponse<CurrentUserResponse> currentUserResponse =  userClient.getCurrentUser();
 
         CurrentUserResponse currentUser = currentUserResponse.data();
-        log.info("Logged in user :: {}", currentUser);
 
         Long userId = currentUser.id();
 
@@ -216,7 +215,6 @@ public class OrderServiceImpl implements OrderService {
         ApiResponse<CurrentUserResponse> currentUserResponse =  userClient.getCurrentUser();
 
         CurrentUserResponse currentUser = currentUserResponse.data();
-        log.info("Logged in user :: {}", currentUser);
 
         Long userId = currentUser.id();
 

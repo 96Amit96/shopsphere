@@ -107,9 +107,8 @@ public class AuthServiceImpl implements AuthService {
         AuthUser authUser = (AuthUser) authentication.getPrincipal();
 
         String accessToken = jwtService.generateToken(authUser);
-        log.info("accessToken Token {}", accessToken);
+
         String refreshToken = refreshTokenService.createRefreshToken(authUser);
-        log.info("refreshToken Token {}", refreshToken);
 
         Set<String> roles = authUser.getRoles()
                 .stream()
@@ -176,8 +175,6 @@ public class AuthServiceImpl implements AuthService {
                                 "User not found with email :: " + email
                         )
                 );
-
-        log.info("User:: {}", user);
 
         return new CurrentUserResponse(
                 user.getId(),

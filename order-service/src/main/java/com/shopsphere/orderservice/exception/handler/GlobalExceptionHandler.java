@@ -276,4 +276,19 @@ public class GlobalExceptionHandler {
                         )
                 );
     }
+
+    @ExceptionHandler(InventoryCircuitOpenException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInventoryCircuitOpen(
+            InventoryCircuitOpenException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                ex.getMessage(),
+                                null
+                        )
+                );
+    }
 }
