@@ -17,6 +17,7 @@ import com.shopsphere.orderservice.exception.InventoryServiceUnavailableExceptio
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
 import com.shopsphere.orderservice.repository.OrderRepository;
 import com.shopsphere.orderservice.repository.ProcessedEventRepository;
+import com.shopsphere.orderservice.service.InventoryReservationService;
 import com.shopsphere.orderservice.service.OrderService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartClient cartClient;
     private final InventoryClient inventoryClient;
     private final ProcessedEventRepository processedEventRepository;
+    private final InventoryReservationService inventoryReservationService;
 
     @Override
     @Transactional
@@ -108,7 +110,7 @@ public class OrderServiceImpl implements OrderService {
                 StockReservationRequest reservationRequest =
                         new StockReservationRequest(item.getQuantity());
 
-                inventoryClient.reserveStock(
+                inventoryReservationService.reserveStock(
                         item.getProductId(),
                         reservationRequest
                 );
