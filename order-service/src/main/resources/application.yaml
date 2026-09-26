@@ -60,6 +60,30 @@ management:
       exposure:
         include: health,info
 
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+        alphanumeric-ids:
+          enabled: true
+
+    circuitbreaker:
+      resilience4j:
+        disable-time-limiter: true
+
+    resilience4j:
+      circuitbreaker:
+        instances:
+          InventoryClientreserveStock:
+            registerHealthIndicator: true
+            slidingWindowType: COUNT_BASED
+            slidingWindowSize: 4
+            minimumNumberOfCalls: 4
+            failureRateThreshold: 50
+            waitDurationInOpenState: 10s
+            permittedNumberOfCallsInHalfOpenState: 2
+
+
 jwt:
   secret: gIwzftaZLAtQbMsCROtusFXFULfPKpR+XGNQk8xf1i0=
   expiration: 900000              # 15 minutes
