@@ -48,6 +48,8 @@ spring:
     circuitbreaker:
       resilience4j:
         disable-time-limiter: true
+        disable-time-limiter-map:
+          InventoryClientreserveStockLongStockReservationRequest: false
 
 eureka:
   client:
@@ -84,6 +86,12 @@ resilience4j:
 
         ignoreExceptions:
           - com.shopsphere.orderservice.exception.InventoryCircuitOpenException
+
+  timelimiter:
+    instances:
+      InventoryClientreserveStockLongStockReservationRequest:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
 
 jwt:
   secret: gIwzftaZLAtQbMsCROtusFXFULfPKpR+XGNQk8xf1i0=
