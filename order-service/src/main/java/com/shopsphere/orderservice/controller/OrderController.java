@@ -5,6 +5,7 @@ import com.shopsphere.orderservice.dto.response.ApiResponse;
 import com.shopsphere.orderservice.dto.response.OrderResponse;
 import com.shopsphere.orderservice.enums.PaymentStatus;
 import com.shopsphere.orderservice.service.OrderService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    @RateLimiter(name = "orderCreateRateLimiter")
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder (
             @RequestBody CreateOrderRequest request) {

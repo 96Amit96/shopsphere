@@ -62,7 +62,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
 
 resilience4j:
   circuitbreaker:
@@ -98,6 +98,13 @@ resilience4j:
       inventoryReservationBulkhead:
         maxConcurrentCalls: 2
         maxWaitDuration: 0
+
+  ratelimiter:
+    instances:
+      orderCreateRateLimiter:
+        limitForPeriod: 5
+        limitRefreshPeriod: 10s
+        timeoutDuration: 0
 
 jwt:
   secret: gIwzftaZLAtQbMsCROtusFXFULfPKpR+XGNQk8xf1i0=

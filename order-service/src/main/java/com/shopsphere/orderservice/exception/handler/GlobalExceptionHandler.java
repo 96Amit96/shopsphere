@@ -3,6 +3,7 @@ package com.shopsphere.orderservice.exception.handler;
 import com.shopsphere.orderservice.dto.response.ApiResponse;
 import com.shopsphere.orderservice.exception.*;
 import io.github.resilience4j.bulkhead.BulkheadFullException;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.User;
@@ -306,6 +307,24 @@ public class GlobalExceptionHandler {
                         new ApiResponse<>(
                                 false,
                                 "Inventory service is currently busy. Please try again.",
+                                null
+                        )
+                );
+    }
+
+    @ExceptionHandler(RequestNotPermitted.class)
+    public ResponseEntity<ApiResponse<Void>> handleRateLimitExceeded(
+            RequestNotPermitted ex
+    ) {
+
+        log.warn("Order creation rate limit exceeded.");
+
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                "Too many order requests. Please try again later.",
                                 null
                         )
                 );
