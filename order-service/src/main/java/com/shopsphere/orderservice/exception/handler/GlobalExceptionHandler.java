@@ -2,6 +2,7 @@ package com.shopsphere.orderservice.exception.handler;
 
 import com.shopsphere.orderservice.dto.response.ApiResponse;
 import com.shopsphere.orderservice.exception.*;
+import io.github.resilience4j.bulkhead.BulkheadFullException;
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.User;
@@ -287,6 +288,24 @@ public class GlobalExceptionHandler {
                         new ApiResponse<>(
                                 false,
                                 ex.getMessage(),
+                                null
+                        )
+                );
+    }
+
+    @ExceptionHandler(BulkheadFullException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBulkheadFullException(
+            BulkheadFullException ex
+    ) {
+
+        log.warn("Inventory bulkhead is full. Rejecting request.");
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                "Inventory service is currently busy. Please try again.",
                                 null
                         )
                 );

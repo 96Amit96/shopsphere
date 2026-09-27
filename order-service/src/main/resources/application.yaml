@@ -93,6 +93,12 @@ resilience4j:
         timeoutDuration: 2s
         cancelRunningFuture: true
 
+  bulkhead:
+    instances:
+      inventoryReservationBulkhead:
+        maxConcurrentCalls: 2
+        maxWaitDuration: 0
+
 jwt:
   secret: gIwzftaZLAtQbMsCROtusFXFULfPKpR+XGNQk8xf1i0=
   expiration: 900000
