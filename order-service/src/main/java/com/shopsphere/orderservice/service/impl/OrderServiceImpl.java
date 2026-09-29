@@ -12,6 +12,7 @@ import com.shopsphere.orderservice.entity.OrderItem;
 import com.shopsphere.orderservice.entity.ProcessedEvent;
 import com.shopsphere.orderservice.enums.OrderStatus;
 import com.shopsphere.orderservice.enums.PaymentStatus;
+import com.shopsphere.orderservice.enums.SagaStatus;
 import com.shopsphere.orderservice.exception.InventoryReservationException;
 import com.shopsphere.orderservice.exception.InventoryServiceUnavailableException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
@@ -97,6 +98,7 @@ public class OrderServiceImpl implements OrderService {
                         )
         );
 
+        order.setSagaStatus(SagaStatus.INVENTORY_RESERVATION_PENDING);
         // 7. Save Order
         Order savedOrder = orderRepository.save(order);
         log.info("Saved order :: {}", savedOrder.getId());
@@ -391,6 +393,7 @@ public class OrderServiceImpl implements OrderService {
                 order.getUserId(),
                 order.getOrderStatus(),
                 order.getPaymentStatus(),
+                order.getSagaStatus(),
                 order.getTotalAmount(),
                 items,
                 order.getCreatedAt(),

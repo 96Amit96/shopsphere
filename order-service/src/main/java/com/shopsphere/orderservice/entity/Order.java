@@ -3,6 +3,7 @@ package com.shopsphere.orderservice.entity;
 import com.shopsphere.orderservice.entity.base.BaseEntity;
 import com.shopsphere.orderservice.enums.OrderStatus;
 import com.shopsphere.orderservice.enums.PaymentStatus;
+import com.shopsphere.orderservice.enums.SagaStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,6 +29,10 @@ public class Order extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 20)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private SagaStatus sagaStatus;
 
     @Column(name = "total_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
