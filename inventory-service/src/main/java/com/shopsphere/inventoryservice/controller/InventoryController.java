@@ -3,6 +3,7 @@ package com.shopsphere.inventoryservice.controller;
 import com.shopsphere.inventoryservice.dto.request.*;
 import com.shopsphere.inventoryservice.dto.response.ApiResponse;
 import com.shopsphere.inventoryservice.dto.response.InventoryResponse;
+import com.shopsphere.inventoryservice.service.InventoryReservationRetryService;
 import com.shopsphere.inventoryservice.service.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final InventoryReservationRetryService inventoryReservationRetryService;
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
@@ -98,7 +100,7 @@ public class InventoryController {
     ) {
 
         InventoryResponse response =
-                inventoryService.reserveStock(
+                inventoryReservationRetryService.reserveStock(
                         productId,
                         request
                 );

@@ -25,6 +25,15 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
 
+  resilience4j:
+    retry:
+      instances:
+        inventoryOptimisticLockRetry:
+          maxAttempts: 3
+          waitDuration: 200ms
+          retryExceptions:
+            - org.springframework.orm.ObjectOptimisticLockingFailureException
+
 management:
   endpoints:
     web:

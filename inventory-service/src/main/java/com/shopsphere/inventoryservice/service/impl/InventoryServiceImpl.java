@@ -174,6 +174,12 @@ public class InventoryServiceImpl implements InventoryService {
 
         Inventory updatedInventory = inventoryRepository.save(inventory);
 
+        log.info(
+                "Stock reserved successfully. productId :: {}, remainingQuantity :: {}",
+                productId,
+                inventory.getAvailableQuantity()
+        );
+
         return inventoryMapper.toResponse(updatedInventory);
     }
 

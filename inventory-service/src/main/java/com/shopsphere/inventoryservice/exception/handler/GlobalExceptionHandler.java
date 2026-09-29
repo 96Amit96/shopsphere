@@ -6,6 +6,7 @@ import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -201,6 +202,27 @@ public class GlobalExceptionHandler {
                         new ApiResponse<>(
                                 false,
                                 ex.getMessage(),
+                                null
+                        )
+                );
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailure(
+            ObjectOptimisticLockingFailureException ex
+    ) {
+
+        log.warn(
+                "Concurrent inventory update detected for entity :: {}",
+                ex.getPersistentClassName()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                "Inventory was modified concurrently. Please retry the reservation.",
                                 null
                         )
                 );
