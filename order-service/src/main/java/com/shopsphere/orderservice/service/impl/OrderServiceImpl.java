@@ -3,6 +3,8 @@ package com.shopsphere.orderservice.service.impl;
 import com.shopsphere.orderservice.client.CartClient;
 import com.shopsphere.orderservice.client.InventoryClient;
 import com.shopsphere.orderservice.client.UserClient;
+import com.shopsphere.orderservice.dto.event.OrderCreatedEvent;
+import com.shopsphere.orderservice.dto.event.OrderItemEvent;
 import com.shopsphere.orderservice.dto.event.PaymentEvent;
 import com.shopsphere.orderservice.dto.request.CreateOrderRequest;
 import com.shopsphere.orderservice.dto.request.StockReservationRequest;
@@ -16,6 +18,7 @@ import com.shopsphere.orderservice.enums.SagaStatus;
 import com.shopsphere.orderservice.exception.InventoryReservationException;
 import com.shopsphere.orderservice.exception.InventoryServiceUnavailableException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
+import com.shopsphere.orderservice.kafka.OrderEventProducer;
 import com.shopsphere.orderservice.repository.OrderRepository;
 import com.shopsphere.orderservice.repository.ProcessedEventRepository;
 import com.shopsphere.orderservice.service.InventoryReservationService;
@@ -29,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +45,7 @@ public class OrderServiceImpl implements OrderService {
     private final InventoryClient inventoryClient;
     private final ProcessedEventRepository processedEventRepository;
     private final InventoryReservationService inventoryReservationService;
+    private final OrderEventProducer orderEventProducer;
 
     @Override
     @Transactional
@@ -102,6 +107,26 @@ public class OrderServiceImpl implements OrderService {
         // 7. Save Order
         Order savedOrder = orderRepository.save(order);
         log.info("Saved order :: {}", savedOrder.getId());
+
+        List<OrderItemEvent> eventItems = savedOrder.getItems()
+                .stream()
+                .map(
+                        item -> new OrderItemEvent(
+                                item.getProductId(),
+                                item.getProductName(),
+                                item.getUnitPrice(),
+                                item.getQuantity()
+                        )
+                ).toList();
+
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                UUID.randomUUID(),
+                savedOrder.getId(),
+                savedOrder.getUserId(),
+                savedOrder.getTotalAmount(),eventItems
+        );
+
+        orderEventProducer.publishOrderCreated(event);
 
         //8. Reserve stock
 

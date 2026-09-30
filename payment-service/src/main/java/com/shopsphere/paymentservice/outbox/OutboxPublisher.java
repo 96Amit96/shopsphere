@@ -72,8 +72,6 @@ public class OutboxPublisher {
                         ex
                 );
 
-                // Keep status PENDING.
-                // Scheduler will retry it next time.
             }
         }
     }
