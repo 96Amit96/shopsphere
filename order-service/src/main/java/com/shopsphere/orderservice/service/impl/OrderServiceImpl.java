@@ -128,7 +128,11 @@ public class OrderServiceImpl implements OrderService {
 
         orderEventProducer.publishOrderCreated(event);
 
-        //8. Reserve stock
+        log.info(
+                "OrderCreatedEvent published for orderId :: {}",
+                savedOrder.getId()
+        );
+       /* //8. Reserve stock
 
         List<OrderItem> reservedItems = new ArrayList<>();
 
@@ -176,7 +180,7 @@ public class OrderServiceImpl implements OrderService {
                             + "Order cannot be created at the moment."
             );
         }
-
+*/
         // 8. Map response
         return mapToOrderResponse(savedOrder);
     }

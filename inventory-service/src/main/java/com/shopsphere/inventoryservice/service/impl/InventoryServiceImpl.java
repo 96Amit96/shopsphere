@@ -157,6 +157,8 @@ public class InventoryServiceImpl implements InventoryService {
                         )
                 );
 
+        log.info("Inventory quantity :: {} , reservedQuantity :: {}, productId :: {}" , inventory.getQuantity() , inventory.getReservedQuantity(), inventory.getProductId() );
+
         int availableQuantity = inventory.getQuantity() - inventory.getReservedQuantity();
 
         if (request.quantity() > availableQuantity) {
@@ -173,6 +175,9 @@ public class InventoryServiceImpl implements InventoryService {
         );
 
         Inventory updatedInventory = inventoryRepository.save(inventory);
+
+        log.info("Updated Inventory quantity :: {} , reservedQuantity :: {}, productId :: {}" , updatedInventory.getQuantity() , updatedInventory.getReservedQuantity(), updatedInventory.getProductId());
+
 
         log.info(
                 "Stock reserved successfully. productId :: {}, remainingQuantity :: {}",

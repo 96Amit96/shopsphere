@@ -18,6 +18,15 @@ spring:
 #      hibernate:
 #        format_sql: true
 
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    consumer:
+      group-id: inventory-order-events-v2
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+
 eureka:
   client:
     service-url:
@@ -33,6 +42,7 @@ eureka:
           waitDuration: 200ms
           retryExceptions:
             - org.springframework.orm.ObjectOptimisticLockingFailureException
+
 
 management:
   endpoints:

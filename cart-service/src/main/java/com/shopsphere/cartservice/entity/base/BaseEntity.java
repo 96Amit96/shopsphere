@@ -1,4 +1,4 @@
-package com.shopsphere.inventoryservice.entity.base;
+package com.shopsphere.cartservice.entity.base;
 
 import jakarta.persistence.*;
 import lombok.Getter;

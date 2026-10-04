@@ -1,6 +1,6 @@
 package com.shopsphere.cartservice.entity;
 
-import com.shopsphere.inventoryservice.entity.base.BaseEntity;
+import com.shopsphere.cartservice.entity.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
