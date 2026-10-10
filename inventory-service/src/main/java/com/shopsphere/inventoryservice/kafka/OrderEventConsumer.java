@@ -82,7 +82,7 @@ public class OrderEventConsumer {
                          event.userId(),
                          InventoryEventType.INVENTORY_RESERVATION_FAILED,
                          List.of(),
-                         null,
+                         event.items().get(0).productId(),
                          ex.getMessage(),
                          LocalDateTime.now()
                  );

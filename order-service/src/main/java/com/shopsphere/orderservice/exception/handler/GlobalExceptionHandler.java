@@ -253,6 +253,20 @@ public class GlobalExceptionHandler {
                 );
     }
 
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOrderNotFoundException(OrderNotFoundException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(
+                        new ApiResponse<>(
+                                false,
+                                ex.getMessage(),
+                                null
+                        )
+                );
+    }
+
     @ExceptionHandler(InventoryReservationException.class)
     public ResponseEntity<ApiResponse<Void>> handleInventoryReservationException(InventoryReservationException ex) {
 
