@@ -1,6 +1,7 @@
 package com.shopsphere.orderservice.kafka;
 
 import com.shopsphere.orderservice.dto.event.InventorySagaEvent;
+import com.shopsphere.orderservice.dto.event.PaymentRequestedEvent;
 import com.shopsphere.orderservice.service.InventoryEventProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,15 +14,14 @@ import org.springframework.stereotype.Component;
     public class InventoryEventConsumer {
 
         private final InventoryEventProcessingService processingService;
+        private final PaymentRequestedEventProducer paymentRequestedEventProducer;
 
         @KafkaListener(
                 topics = "inventory-events",
                 containerFactory =
                         "orderInventoryEventKafkaListenerContainerFactory"
         )
-        public void consumeInventoryEvent(
-                InventorySagaEvent event
-        ) {
+        public void consumeInventoryEvent(InventorySagaEvent event) {
 
             log.info(
                     "Received InventorySagaEvent. eventId :: {}, orderEventId :: {}, orderId :: {}, eventType :: {}",
@@ -31,6 +31,10 @@ import org.springframework.stereotype.Component;
                     event.eventType()
             );
 
-            processingService.processInventoryEvent(event);
+            PaymentRequestedEvent paymentRequestedEvent = processingService.processInventoryEvent(event);
+
+           if (paymentRequestedEvent != null) {
+               paymentRequestedEventProducer.publishPaymentRequested(paymentRequestedEvent);
+           }
         }
 }

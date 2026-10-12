@@ -12,6 +12,7 @@ public record OrderResponse(
         Long userId,
         OrderStatus orderStatus,
         PaymentStatus paymentStatus,
+        String paymentMethod,
         BigDecimal totalAmount,
         List<OrderItemResponse> items,
         LocalDateTime createdAt,

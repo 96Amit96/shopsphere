@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -103,6 +104,10 @@ public class OrderServiceImpl implements OrderService {
                         )
         );
 
+        order.setPaymentMethod(
+                request.paymentMethod().trim().toUpperCase(Locale.ROOT)
+        );
+
         order.setSagaStatus(SagaStatus.INVENTORY_RESERVATION_PENDING);
         // 7. Save Order
         Order savedOrder = orderRepository.save(order);
@@ -132,55 +137,7 @@ public class OrderServiceImpl implements OrderService {
                 "OrderCreatedEvent published for orderId :: {}",
                 savedOrder.getId()
         );
-       /* //8. Reserve stock
 
-        List<OrderItem> reservedItems = new ArrayList<>();
-
-        try {
-            for (OrderItem item : savedOrder.getItems()) {
-                StockReservationRequest reservationRequest =
-                        new StockReservationRequest(item.getQuantity());
-
-                inventoryReservationService.reserveStock(
-                        item.getProductId(),
-                        reservationRequest
-                );
-
-                reservedItems.add(item);
-            }
-        } catch (InventoryReservationException ex) {
-
-            log.info(
-                    "Inventory reservation failed for orderId :: {}",
-                    savedOrder.getId()
-            );
-
-            releaseReservedStock(reservedItems);
-
-            savedOrder.setOrderStatus((OrderStatus.CANCELLED));
-            orderRepository.save(savedOrder);
-
-            throw new InventoryReservationException( "Unable to reserve inventory for order");
-        } catch (InventoryServiceUnavailableException ex) {
-            // Feign + Resilience4j fallback
-            log.error(
-                    "Inventory service unavailable for orderId :: {}",
-                    savedOrder.getId(),
-                    ex.getMessage()
-            );
-
-            // Release any stock that may already have been reserved
-            releaseReservedStock(reservedItems);
-
-            savedOrder.setOrderStatus(OrderStatus.CANCELLED);
-            orderRepository.save(savedOrder);
-
-            throw new InventoryServiceUnavailableException(
-                    "Inventory service is currently unavailable. "
-                            + "Order cannot be created at the moment."
-            );
-        }
-*/
         // 8. Map response
         return mapToOrderResponse(savedOrder);
     }
@@ -422,6 +379,7 @@ public class OrderServiceImpl implements OrderService {
                 order.getUserId(),
                 order.getOrderStatus(),
                 order.getPaymentStatus(),
+                order.getPaymentMethod(),
                 order.getSagaStatus(),
                 order.getTotalAmount(),
                 items,

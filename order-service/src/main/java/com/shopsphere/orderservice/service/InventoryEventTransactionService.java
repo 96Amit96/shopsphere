@@ -2,6 +2,7 @@ package com.shopsphere.orderservice.service;
 
 import com.shopsphere.orderservice.dto.event.InventoryEventType;
 import com.shopsphere.orderservice.dto.event.InventorySagaEvent;
+import com.shopsphere.orderservice.dto.event.PaymentRequestedEvent;
 import com.shopsphere.orderservice.entity.Order;
 import com.shopsphere.orderservice.entity.ProcessedEvent;
 import com.shopsphere.orderservice.enums.OrderStatus;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -25,7 +27,7 @@ public class InventoryEventTransactionService {
     private final ProcessedEventRepository processedEventRepository;
 
     @Transactional
-    public void processInventoryEvent(InventorySagaEvent event) {
+    public PaymentRequestedEvent processInventoryEvent(InventorySagaEvent event) {
 
         if (processedEventRepository.existsById(event.eventId())) {
 
@@ -35,7 +37,7 @@ public class InventoryEventTransactionService {
                     event.orderId()
             );
 
-            return;
+            return null;
         }
 
         Order order = orderRepository.findById(event.orderId())
@@ -43,13 +45,29 @@ public class InventoryEventTransactionService {
                         () -> new OrderNotFoundException("Order not found :: " + event.orderId())
                 );
 
+        PaymentRequestedEvent paymentRequestedEvent = null;
+
         if(event.eventType() == InventoryEventType.INVENTORY_RESERVED) {
 
-            order.setSagaStatus(SagaStatus.INVENTORY_RESERVED);
+            if (order.getPaymentMethod() == null || order.getPaymentMethod().isBlank()) {
+                throw new IllegalStateException("Payment method is missing for order :: "+ order.getId());
+            }
+
+            order.setSagaStatus(SagaStatus.PAYMENT_PENDING);
+
+            paymentRequestedEvent = new PaymentRequestedEvent(
+                    UUID.randomUUID(),
+                    event.eventId(),
+                    order.getId(),
+                    order.getUserId(),
+                    order.getTotalAmount(),
+                    order.getPaymentMethod(),
+                    LocalDateTime.now()
+            );
 
             log.info(
-                    "Inventory reserved successfully for orderId :: {}",
-                    event.orderId()
+                    "Inventory reserved successfully. Payment requested for orderId  :: {}",
+                    order.getId()
             );
             
         } else if (event.eventType() == InventoryEventType.INVENTORY_RESERVATION_FAILED) {
@@ -80,5 +98,6 @@ public class InventoryEventTransactionService {
                 event.orderId()
         );
 
+        return paymentRequestedEvent;
     }
 }

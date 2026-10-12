@@ -1,4 +1,9 @@
 package com.shopsphere.orderservice.dto.request;
 
-public record CreateOrderRequest() {
+import jakarta.validation.constraints.NotBlank;
+
+public record CreateOrderRequest(
+        @NotBlank(message = "Payment method is required")
+        String paymentMethod
+) {
 }
