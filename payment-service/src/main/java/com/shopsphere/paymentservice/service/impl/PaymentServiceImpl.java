@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopsphere.paymentservice.client.OrderClient;
 import com.shopsphere.paymentservice.client.UserClient;
 import com.shopsphere.paymentservice.dto.event.PaymentEvent;
+import com.shopsphere.paymentservice.dto.event.PaymentRequestedEvent;
 import com.shopsphere.paymentservice.dto.request.PaymentRequest;
 import com.shopsphere.paymentservice.dto.response.*;
 import com.shopsphere.paymentservice.entity.OutboxEvent;
 import com.shopsphere.paymentservice.entity.Payment;
 import com.shopsphere.paymentservice.enums.OutboxStatus;
+import com.shopsphere.paymentservice.enums.PaymentMethod;
 import com.shopsphere.paymentservice.enums.PaymentStatus;
 import com.shopsphere.paymentservice.exception.DuplicatePaymentException;
 import com.shopsphere.paymentservice.exception.PaymentNotFoundException;
@@ -24,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -217,4 +220,86 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentMapper.toPaymentResponse(savedPayment);
     }
 
+
+    @Override
+    @Transactional
+    public PaymentResponse createPaymentFromEvent(PaymentRequestedEvent event) {
+
+        log.info(
+                "Creating payment from Kafka event. orderId :: {}, userId :: {}",
+                event.orderId(),
+                event.userId()
+        );
+
+        // 1. Validate the event payload
+        if (event.eventId() == null
+                || event.orderId() == null
+                || event.userId() == null
+                || event.amount() == null
+                || event.amount().signum() <= 0
+                || event.paymentMethod() == null
+                || event.paymentMethod().isBlank()) {
+
+            throw new PaymentValidationException(
+                    "Invalid PaymentRequestedEvent payload"
+            );
+        }
+
+        // 2. Convert the payment method string to the enum
+        PaymentMethod paymentMethod;
+
+        try {
+            paymentMethod = PaymentMethod.valueOf(
+                    event.paymentMethod().trim().toUpperCase(Locale.ROOT)
+            );
+        } catch (IllegalArgumentException ex) {
+            throw new PaymentValidationException(
+                    "Unsupported payment method :: " + event.paymentMethod()
+            );
+        }
+
+        // 3. Make event processing idempotent by order ID
+        Payment existingPayment = paymentRepository
+                .findByOrderId(event.orderId())
+                .orElse(null);
+
+        if (existingPayment != null) {
+
+            log.info(
+                    "Payment already exists for orderId :: {}, status :: {}",
+                    event.orderId(),
+                    existingPayment.getPaymentStatus()
+            );
+
+            // If a pending payment exists, continue processing it.
+            if (existingPayment.getPaymentStatus() == PaymentStatus.PENDING) {
+                return processPayment(existingPayment.getId());
+            }
+
+            // A terminal payment must not be charged again on event redelivery.
+            return paymentMapper.toPaymentResponse(existingPayment);
+        }
+
+        // 4. Create the payment using trusted event data.
+        // No protected Order Service API call is needed here.
+        Payment payment = new Payment();
+
+        payment.setOrderId(event.orderId());
+        payment.setUserId(event.userId());
+        payment.setAmount(event.amount());
+        payment.setPaymentMethod(paymentMethod);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
+        payment.setTransactionId("TXN-" + UUID.randomUUID());
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        log.info(
+                "Payment created from event. paymentId :: {}, orderId :: {}",
+                savedPayment.getId(),
+                savedPayment.getOrderId()
+        );
+
+        // 5. Process the payment through the existing gateway and outbox logic.
+        return processPayment(savedPayment.getId());
+    }
 }

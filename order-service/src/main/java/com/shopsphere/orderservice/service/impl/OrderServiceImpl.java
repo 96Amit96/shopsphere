@@ -3,9 +3,7 @@ package com.shopsphere.orderservice.service.impl;
 import com.shopsphere.orderservice.client.CartClient;
 import com.shopsphere.orderservice.client.InventoryClient;
 import com.shopsphere.orderservice.client.UserClient;
-import com.shopsphere.orderservice.dto.event.OrderCreatedEvent;
-import com.shopsphere.orderservice.dto.event.OrderItemEvent;
-import com.shopsphere.orderservice.dto.event.PaymentEvent;
+import com.shopsphere.orderservice.dto.event.*;
 import com.shopsphere.orderservice.dto.request.CreateOrderRequest;
 import com.shopsphere.orderservice.dto.request.StockReservationRequest;
 import com.shopsphere.orderservice.dto.response.*;
@@ -18,6 +16,7 @@ import com.shopsphere.orderservice.enums.SagaStatus;
 import com.shopsphere.orderservice.exception.InventoryReservationException;
 import com.shopsphere.orderservice.exception.InventoryServiceUnavailableException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
+import com.shopsphere.orderservice.kafka.InventoryCompensationEventProducer;
 import com.shopsphere.orderservice.kafka.OrderEventProducer;
 import com.shopsphere.orderservice.repository.OrderRepository;
 import com.shopsphere.orderservice.repository.ProcessedEventRepository;
@@ -28,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,10 +44,11 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final UserClient userClient;
     private final CartClient cartClient;
-    private final InventoryClient inventoryClient;
+   // private final InventoryClient inventoryClient;
     private final ProcessedEventRepository processedEventRepository;
-    private final InventoryReservationService inventoryReservationService;
+   // private final InventoryReservationService inventoryReservationService;
     private final OrderEventProducer orderEventProducer;
+    private final InventoryCompensationEventProducer inventoryCompensationEventProducer;
 
     @Override
     @Transactional
@@ -145,7 +147,7 @@ public class OrderServiceImpl implements OrderService {
 
     //Release reservedStock compensation method
 
-    private void releaseReservedStock(
+   /* private void releaseReservedStock(
             List<OrderItem> reservedItems
     ) {
 
@@ -178,7 +180,7 @@ public class OrderServiceImpl implements OrderService {
                 );
             }
         }
-    }
+    }*/
 
     @Override
     @Transactional(readOnly = true)
@@ -271,26 +273,68 @@ public class OrderServiceImpl implements OrderService {
                 && order.getOrderStatus() == OrderStatus.CANCELLED) {
 
             log.info(
-                    "Payment failure already handled for orderId :: {}",
-                    orderId
+                    "Payment failure already handled for orderId or compensation pending"+ "orderId :: {} , sagaStatus :: {}",
+                    orderId,
+                    order.getSagaStatus()
             );
 
             return mapToOrderResponse(order);
         }
+        // 1. Update state before requesting compensation.
 
-        // Release reserved inventory
-        releaseReservedStock(order.getItems());
-
-        // Update statuses
         order.setPaymentStatus(PaymentStatus.FAILED);
         order.setOrderStatus(OrderStatus.CANCELLED);
+        order.setSagaStatus(SagaStatus.COMPENSATING);
 
         Order updatedOrder =
                 orderRepository.save(order);
 
+        // 2. Build the compensation items from the order.
+
+        List<InventoryCompensationItemEvent> compensationItems=
+                updatedOrder.getItems()
+                        .stream()
+                        .map(item ->
+                                new InventoryCompensationItemEvent(
+                                        item.getProductId(),
+                                        item.getQuantity()
+                                )
+                        )
+                        .toList();
+
+        // 3. Create the Kafka event.
+
+        InventoryCompensationRequestedEvent compensationEvent =
+                new InventoryCompensationRequestedEvent(
+                        UUID.randomUUID(),
+                        updatedOrder.getId(),
+                        updatedOrder.getUserId(),
+                        compensationItems,
+                        "PAYMENT_FAILED",
+                        LocalDateTime.now()
+                );
+
+        // 4. Publish only after the order transaction commits.
+        // This prevents Inventory Service from responding before
+        // the COMPENSATING state has been persisted.
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+
+                    @Override
+                    public void afterCommit() {
+                        inventoryCompensationEventProducer
+                                .publishCompensationRequested(
+                                        compensationEvent
+                                );
+                    }
+                }
+        );
+
         log.info(
-                "Payment failure handled successfully. orderId :: {}",
-                orderId
+                "Order marked CANCELLED and Saga set to COMPENSATING. " +
+                        "Inventory compensation request scheduled. orderId :: {}",
+                updatedOrder.getId()
         );
 
         return mapToOrderResponse(updatedOrder);
