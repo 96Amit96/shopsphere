@@ -17,6 +17,7 @@ import com.shopsphere.orderservice.exception.InventoryReservationException;
 import com.shopsphere.orderservice.exception.InventoryServiceUnavailableException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
 import com.shopsphere.orderservice.kafka.InventoryCompensationEventProducer;
+import com.shopsphere.orderservice.kafka.InventoryDeductionEventProducer;
 import com.shopsphere.orderservice.kafka.OrderEventProducer;
 import com.shopsphere.orderservice.repository.OrderRepository;
 import com.shopsphere.orderservice.repository.ProcessedEventRepository;
@@ -44,11 +45,10 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final UserClient userClient;
     private final CartClient cartClient;
-   // private final InventoryClient inventoryClient;
     private final ProcessedEventRepository processedEventRepository;
-   // private final InventoryReservationService inventoryReservationService;
     private final OrderEventProducer orderEventProducer;
     private final InventoryCompensationEventProducer inventoryCompensationEventProducer;
+    private final InventoryDeductionEventProducer inventoryDeductionEventProducer;
 
     @Override
     @Transactional
@@ -143,44 +143,6 @@ public class OrderServiceImpl implements OrderService {
         // 8. Map response
         return mapToOrderResponse(savedOrder);
     }
-
-
-    //Release reservedStock compensation method
-
-   /* private void releaseReservedStock(
-            List<OrderItem> reservedItems
-    ) {
-
-        for (OrderItem item : reservedItems) {
-
-            try {
-
-                StockReservationRequest request =
-                        new StockReservationRequest(
-                                item.getQuantity()
-                        );
-
-                inventoryClient.releaseStock(
-                        item.getProductId(),
-                        request
-                );
-
-                log.info(
-                        "Released inventory for productId :: {}, quantity :: {}",
-                        item.getProductId(),
-                        item.getQuantity()
-                );
-
-            } catch (FeignException ex) {
-
-                log.info(
-                        "Failed to release inventory for productId :: {}",
-                        item.getProductId(),
-                        ex
-                );
-            }
-        }
-    }*/
 
     @Override
     @Transactional(readOnly = true)
@@ -340,6 +302,103 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponse(updatedOrder);
     }
 
+
+    private void handlePaymentSuccess(PaymentEvent event) {
+
+        log.info(
+                "Handling payment success for orderId :: {}",
+                event.orderId()
+        );
+
+        Order order = orderRepository.findById(event.orderId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found with id :: " + event.orderId()
+                        )
+                );
+
+        // Do not finalize an order that has already been cancelled
+        // or is undergoing compensation.
+        if (order.getOrderStatus() == OrderStatus.CANCELLED
+                || order.getSagaStatus() == SagaStatus.COMPENSATING
+                || order.getSagaStatus() == SagaStatus.FAILED) {
+
+            throw new IllegalStateException(
+                    "Cannot finalize a cancelled or failed order. orderId :: "
+                            + event.orderId()
+            );
+        }
+
+        // Avoid scheduling another deduction for an already completed
+        // order or a payment-success event already being handled.
+        if (order.getSagaStatus() == SagaStatus.COMPLETED
+                || (order.getPaymentStatus() == PaymentStatus.SUCCESS
+                && order.getSagaStatus() == SagaStatus.PAYMENT_SUCCESS)) {
+
+            log.info(
+                    "Payment success already handled. orderId :: {}, sagaStatus :: {}",
+                    order.getId(),
+                    order.getSagaStatus()
+            );
+
+            return;
+        }
+
+        // The inventory reservation must have completed before payment.
+        if (order.getSagaStatus() != SagaStatus.PAYMENT_PENDING) {
+            throw new IllegalStateException(
+                    "Order is not awaiting payment. orderId :: "
+                            + order.getId()
+                            + ", sagaStatus :: "
+                            + order.getSagaStatus()
+            );
+        }
+
+        // Record payment success, but don't confirm the order yet.
+        order.setPaymentStatus(PaymentStatus.SUCCESS);
+        order.setSagaStatus(SagaStatus.PAYMENT_SUCCESS);
+
+        Order savedOrder = orderRepository.save(order);
+
+        List<InventoryDeductionItemEvent> items =
+                savedOrder.getItems()
+                        .stream()
+                        .map(item ->
+                                new InventoryDeductionItemEvent(
+                                        item.getProductId(),
+                                        item.getQuantity()
+                                )
+                        )
+                        .toList();
+
+        InventoryDeductionRequestedEvent deductionEvent =
+                new InventoryDeductionRequestedEvent(
+                        UUID.randomUUID(),
+                        event.eventId(),
+                        savedOrder.getId(),
+                        savedOrder.getUserId(),
+                        items,
+                        LocalDateTime.now()
+                );
+
+        // Publish only after the database transaction commits.
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        inventoryDeductionEventProducer
+                                .publishDeductionRequested(deductionEvent);
+                    }
+                }
+        );
+
+        log.info(
+                "Payment succeeded. Inventory deduction scheduled for orderId :: {}",
+                savedOrder.getId()
+        );
+    }
+
+
     @Override
     @Transactional
     public void processPaymentEvent(PaymentEvent event) {
@@ -364,10 +423,7 @@ public class OrderServiceImpl implements OrderService {
         // 2. Process business event
         switch (event.paymentStatus()) {
 
-            case SUCCESS -> updatePaymentStatus(
-                    event.orderId(),
-                    PaymentStatus.SUCCESS
-            );
+            case SUCCESS -> handlePaymentSuccess(event);
 
             case FAILED -> handlePaymentFailure(
                     event.orderId()
