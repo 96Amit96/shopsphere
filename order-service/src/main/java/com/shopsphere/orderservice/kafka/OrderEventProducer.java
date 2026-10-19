@@ -1,9 +1,9 @@
 package com.shopsphere.orderservice.kafka;
 
 import com.shopsphere.orderservice.dto.event.OrderCreatedEvent;
+import com.shopsphere.orderservice.service.OrderOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -11,24 +11,16 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class OrderEventProducer {
 
-    private static final String ORDER_EVENTS_TOPIC = "order-events";
-
-    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+    private final OrderOutboxService orderOutboxService;
 
     public void publishOrderCreated(OrderCreatedEvent event) {
 
-        kafkaTemplate.send(
-                ORDER_EVENTS_TOPIC,
-                event.orderId().toString(),
-                event
-        );
+        orderOutboxService.saveOrderCreatedEvent(event);
 
         log.info(
-                "Published OrderCreatedEvent. eventId :: {}, orderId :: {}",
+                "OrderCreatedEvent saved to outbox. eventId :: {}, orderId :: {}",
                 event.eventId(),
                 event.orderId()
         );
     }
-
-
 }
