@@ -3,6 +3,7 @@ package com.shopsphere.orderservice.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopsphere.orderservice.dto.event.OrderCreatedEvent;
+import com.shopsphere.orderservice.dto.event.PaymentRequestedEvent;
 import com.shopsphere.orderservice.entity.OrderOutboxEvent;
 import com.shopsphere.orderservice.enums.OrderOutboxStatus;
 import com.shopsphere.orderservice.repository.OrderOutboxEventRepository;
@@ -45,6 +46,39 @@ public class OrderOutboxService {
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException(
                     "Could not serialize OrderCreatedEvent for outbox",
+                    ex
+            );
+        }
+    }
+
+    @Transactional
+    public void savePaymentRequestedEvent(PaymentRequestedEvent event) {
+
+        try {
+            OrderOutboxEvent outboxEvent = new OrderOutboxEvent();
+
+            outboxEvent.setId(event.eventId());
+            outboxEvent.setEventType("PAYMENT_REQUESTED");
+            outboxEvent.setAggregateType("ORDER");
+            outboxEvent.setAggregateId(event.orderId());
+            outboxEvent.setTopic("payment-requests");
+            outboxEvent.setMessageKey(event.orderId().toString());
+            outboxEvent.setPayload(
+                    objectMapper.writeValueAsString(event)
+            );
+            outboxEvent.setStatus(OrderOutboxStatus.PENDING);
+
+            outboxRepository.save(outboxEvent);
+
+            log.info(
+                    "PaymentRequestedEvent saved to outbox. eventId :: {}, orderId :: {}",
+                    event.eventId(),
+                    event.orderId()
+            );
+
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException(
+                    "Could not serialize PaymentRequestedEvent for outbox",
                     ex
             );
         }
