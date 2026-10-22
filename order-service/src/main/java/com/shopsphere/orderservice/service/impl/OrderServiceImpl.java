@@ -1,11 +1,9 @@
 package com.shopsphere.orderservice.service.impl;
 
 import com.shopsphere.orderservice.client.CartClient;
-import com.shopsphere.orderservice.client.InventoryClient;
 import com.shopsphere.orderservice.client.UserClient;
 import com.shopsphere.orderservice.dto.event.*;
 import com.shopsphere.orderservice.dto.request.CreateOrderRequest;
-import com.shopsphere.orderservice.dto.request.StockReservationRequest;
 import com.shopsphere.orderservice.dto.response.*;
 import com.shopsphere.orderservice.entity.Order;
 import com.shopsphere.orderservice.entity.OrderItem;
@@ -13,17 +11,13 @@ import com.shopsphere.orderservice.entity.ProcessedEvent;
 import com.shopsphere.orderservice.enums.OrderStatus;
 import com.shopsphere.orderservice.enums.PaymentStatus;
 import com.shopsphere.orderservice.enums.SagaStatus;
-import com.shopsphere.orderservice.exception.InventoryReservationException;
-import com.shopsphere.orderservice.exception.InventoryServiceUnavailableException;
 import com.shopsphere.orderservice.exception.ResourceNotFoundException;
 import com.shopsphere.orderservice.kafka.InventoryCompensationEventProducer;
 import com.shopsphere.orderservice.kafka.InventoryDeductionEventProducer;
 import com.shopsphere.orderservice.kafka.OrderEventProducer;
 import com.shopsphere.orderservice.repository.OrderRepository;
 import com.shopsphere.orderservice.repository.ProcessedEventRepository;
-import com.shopsphere.orderservice.service.InventoryReservationService;
 import com.shopsphere.orderservice.service.OrderService;
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +26,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -381,19 +374,11 @@ public class OrderServiceImpl implements OrderService {
                         LocalDateTime.now()
                 );
 
-        // Publish only after the database transaction commits.
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        inventoryDeductionEventProducer
-                                .publishDeductionRequested(deductionEvent);
-                    }
-                }
-        );
+        // Save the deduction request to the outbox within the current transaction.
+        inventoryDeductionEventProducer.publishDeductionRequested(deductionEvent);
 
         log.info(
-                "Payment succeeded. Inventory deduction scheduled for orderId :: {}",
+                "Payment succeeded. Inventory deduction request saved to outbox for orderId :: {}",
                 savedOrder.getId()
         );
     }

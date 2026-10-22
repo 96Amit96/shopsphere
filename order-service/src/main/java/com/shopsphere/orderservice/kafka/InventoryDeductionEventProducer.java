@@ -1,9 +1,9 @@
 package com.shopsphere.orderservice.kafka;
 
 import com.shopsphere.orderservice.dto.event.InventoryDeductionRequestedEvent;
+import com.shopsphere.orderservice.service.OrderOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -11,38 +11,17 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class InventoryDeductionEventProducer {
 
-    private static final String TOPIC = "inventory-deduction-requests";
+    private final OrderOutboxService orderOutboxService;
 
-    private final KafkaTemplate<String, InventoryDeductionRequestedEvent>
-            inventoryDeductionKafkaTemplate;
+    public void publishDeductionRequested(
+            InventoryDeductionRequestedEvent event) {
 
-    public void publishDeductionRequested(InventoryDeductionRequestedEvent event) {
-        inventoryDeductionKafkaTemplate.send(
-                TOPIC,
-                event.orderId().toString(),
-                event
-        ).whenComplete((result,exception) -> {
-            if (exception != null) {
-                log.error(
-                        "Failed to publish InventoryDeductionRequestedEvent. " +
-                                "eventId :: {}, orderId :: {}",
-                        event.eventId(),
-                        event.orderId(),
-                        exception
-                );
-                return;
-            }
-            log.info(
-                    "Published InventoryDeductionRequestedEvent. " +
-                            "eventId :: {}, paymentEventId :: {}, orderId :: {}, " +
-                            "topic :: {}, partition :: {}, offset :: {}",
-                    event.eventId(),
-                    event.paymentEventId(),
-                    event.orderId(),
-                    result.getRecordMetadata().topic(),
-                    result.getRecordMetadata().partition(),
-                    result.getRecordMetadata().offset()
-            );
-        });
+        orderOutboxService.saveInventoryDeductionRequestedEvent(event);
+
+        log.info(
+                "InventoryDeductionRequestedEvent recorded in outbox. eventId :: {}, orderId :: {}",
+                event.eventId(),
+                event.orderId()
+        );
     }
 }
