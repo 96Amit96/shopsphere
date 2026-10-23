@@ -2,6 +2,7 @@ package com.shopsphere.orderservice.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shopsphere.orderservice.dto.event.InventoryCompensationRequestedEvent;
 import com.shopsphere.orderservice.dto.event.InventoryDeductionRequestedEvent;
 import com.shopsphere.orderservice.dto.event.OrderCreatedEvent;
 import com.shopsphere.orderservice.dto.event.PaymentRequestedEvent;
@@ -114,6 +115,41 @@ public class OrderOutboxService {
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException(
                     "Failed to serialize InventoryDeductionRequestedEvent",
+                    exception
+            );
+        }
+    }
+
+    @Transactional
+    public void saveInventoryCompensationRequestedEvent(
+            InventoryCompensationRequestedEvent event) {
+
+        try {
+            String payload = objectMapper.writeValueAsString(event);
+
+            OrderOutboxEvent outboxEvent = new OrderOutboxEvent();
+            outboxEvent.setId(event.eventId());
+            outboxEvent.setEventType("INVENTORY_COMPENSATION_REQUESTED");
+            outboxEvent.setAggregateType("ORDER");
+            outboxEvent.setAggregateId(event.orderId());
+            outboxEvent.setTopic("inventory-compensation-requests");
+            outboxEvent.setMessageKey(event.orderId().toString());
+            outboxEvent.setPayload(payload);
+            outboxEvent.setStatus(OrderOutboxStatus.PENDING);
+            outboxEvent.setAttempts(0);
+
+            outboxRepository.save(outboxEvent);
+
+            log.info(
+                    "InventoryCompensationRequestedEvent saved to outbox. "
+                            + "eventId :: {}, orderId :: {}",
+                    event.eventId(),
+                    event.orderId()
+            );
+
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException(
+                    "Failed to serialize InventoryCompensationRequestedEvent",
                     exception
             );
         }

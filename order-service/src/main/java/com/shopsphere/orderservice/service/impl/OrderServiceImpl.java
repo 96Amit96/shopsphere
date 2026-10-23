@@ -22,8 +22,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -273,23 +271,11 @@ public class OrderServiceImpl implements OrderService {
         // This prevents Inventory Service from responding before
         // the COMPENSATING state has been persisted.
 
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-
-                    @Override
-                    public void afterCommit() {
-                        inventoryCompensationEventProducer
-                                .publishCompensationRequested(
-                                        compensationEvent
-                                );
-                    }
-                }
-        );
+       inventoryCompensationEventProducer.publishCompensationRequested(compensationEvent);
 
         log.info(
-                "Order marked CANCELLED and Saga set to COMPENSATING. " +
-                        "Inventory compensation request scheduled. orderId :: {}",
-                updatedOrder.getId()
+                "Inventory compensation request saved to outbox for orderId :: {}",
+                order.getId()
         );
 
         return mapToOrderResponse(updatedOrder);

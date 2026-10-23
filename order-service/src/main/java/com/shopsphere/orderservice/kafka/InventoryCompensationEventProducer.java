@@ -1,9 +1,9 @@
 package com.shopsphere.orderservice.kafka;
 
 import com.shopsphere.orderservice.dto.event.InventoryCompensationRequestedEvent;
+import com.shopsphere.orderservice.service.OrderOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -11,36 +11,17 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class InventoryCompensationEventProducer {
 
-    private static final String TOPIC = "inventory-compensation-requests";
-
-    private final KafkaTemplate<String, InventoryCompensationRequestedEvent> inventoryCompensationKafkaTemplate;
+    private final OrderOutboxService orderOutboxService;
 
     public void publishCompensationRequested(InventoryCompensationRequestedEvent event) {
-        inventoryCompensationKafkaTemplate.send(
-                TOPIC,
-                event.orderId().toString(),
-                event
-        ).whenComplete((result , exception) -> {
-            if (exception != null) {
-                log.error(
-                        "Failed to publish inventory compensation request. " +
-                                "eventId :: {}, orderId :: {}",
-                        event.eventId(),
-                        event.orderId(),
-                        exception
-                );
-                return;
-            }
-            log.info(
-                    "Published InventoryCompensationRequestedEvent. " +
-                            "eventId :: {}, orderId :: {}, topic :: {}, " +
-                            "partition :: {}, offset :: {}",
-                    event.eventId(),
-                    event.orderId(),
-                    result.getRecordMetadata().topic(),
-                    result.getRecordMetadata().partition(),
-                    result.getRecordMetadata().offset()
-            );
-        });
+
+        orderOutboxService.saveInventoryCompensationRequestedEvent(event);
+
+        log.info(
+                "InventoryCompensationRequestedEvent recorded in outbox. "
+                        + "eventId :: {}, orderId :: {}",
+                event.eventId(),
+                event.orderId()
+        );
     }
 }
