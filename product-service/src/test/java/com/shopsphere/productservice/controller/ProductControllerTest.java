@@ -1,5 +1,6 @@
 package com.shopsphere.productservice.controller;
 
+import com.shopsphere.productservice.dto.request.ProductCreateRequest;
 import com.shopsphere.productservice.dto.response.ProductResponse;
 import com.shopsphere.productservice.enums.ProductStatus;
 import com.shopsphere.productservice.security.jwt.JwtService;
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.springframework.http.MediaType;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.mockito.ArgumentMatchers.any;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -89,5 +91,53 @@ public class ProductControllerTest {
                         .value("SKU is required"));
 
         verifyNoInteractions(productService);
+    }
+
+    @Test
+    void createProduct_shouldReturnCreatedWhenRequestIsValid()
+            throws Exception {
+
+        ProductResponse response = new ProductResponse(
+                11L,
+                "SKU-TEST-002",
+                "Test Product",
+                "Created through controller test",
+                new BigDecimal("1299.00"),
+                1L,
+                "Electronics",
+                "TestBrand",
+                ProductStatus.ACTIVE,
+                LocalDateTime.of(2026, 1, 1, 10, 0),
+                LocalDateTime.of(2026, 1, 1, 10, 0)
+        );
+
+        when(productService.createProduct(any(ProductCreateRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "sku": "SKU-TEST-002",
+                                "name": "Test Product",
+                                "description": "Created through controller test",
+                                "price": 1299.00,
+                                "categoryId": 1,
+                                "brand": "TestBrand"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message")
+                        .value("Product created successfully"))
+                .andExpect(jsonPath("$.data.id").value(11))
+                .andExpect(jsonPath("$.data.sku").value("SKU-TEST-002"))
+                .andExpect(jsonPath("$.data.name").value("Test Product"))
+                .andExpect(jsonPath("$.data.price").value(1299.00))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+
+        verify(productService).createProduct(any(ProductCreateRequest.class));
     }
 }
