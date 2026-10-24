@@ -2,10 +2,12 @@ package com.shopsphere.inventoryservice.service;
 
 import com.shopsphere.inventoryservice.dto.event.InventoryCompensationItemEvent;
 import com.shopsphere.inventoryservice.dto.event.InventoryCompensationRequestedEvent;
+import com.shopsphere.inventoryservice.dto.event.InventoryCompensationResultEvent;
 import com.shopsphere.inventoryservice.entity.Inventory;
 import com.shopsphere.inventoryservice.entity.ProcessedEvent;
 import com.shopsphere.inventoryservice.exception.InvalidRequestException;
 import com.shopsphere.inventoryservice.exception.ResourceNotFoundException;
+import com.shopsphere.inventoryservice.kafka.InventoryCompensationResultEventProducer;
 import com.shopsphere.inventoryservice.repository.InventoryRepository;
 import com.shopsphere.inventoryservice.repository.ProcessedEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -22,86 +25,106 @@ public class InventoryCompensationTransactionService {
 
     private final InventoryRepository inventoryRepository;
     private final ProcessedEventRepository processedEventRepository;
+    private final InventoryCompensationResultEventProducer resultProducer;
 
     @Transactional
     public void releaseReservedStock(InventoryCompensationRequestedEvent event) {
 
-        validateEvent(event);
+            validateEvent(event);
 
-        // Idempotency: do not release stock twice for the same request.
-        if (processedEventRepository.existsById(event.eventId())) {
-            log.info(
-                    "Compensation request already processed. eventId :: {}, orderId :: {}",
-                    event.eventId(),
-                    event.orderId()
-            );
-            return;
-        }
+            // Ignore duplicate compensation requests.
+            if (processedEventRepository.existsById(event.eventId())) {
+                log.info(
+                        "Compensation request already processed. "
+                                + "eventId :: {}, orderId :: {}",
+                        event.eventId(),
+                        event.orderId()
+                );
+                return;
+            }
 
-        for (InventoryCompensationItemEvent item : event.items()) {
+            // Release every reserved item in the same transaction.
+            for (InventoryCompensationItemEvent item : event.items()) {
 
-            Inventory inventory = inventoryRepository
-                    .findByProductId(item.productId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Inventory not found for product id :: "
+                Inventory inventory = inventoryRepository
+                        .findByProductId(item.productId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Inventory not found for product id :: "
+                                        + item.productId()
+                        ));
+
+                int reservedQuantity = inventory.getReservedQuantity();
+
+                if (item.quantity() > reservedQuantity) {
+                    throw new InvalidRequestException(
+                            "Cannot release more stock than reserved for product id :: "
                                     + item.productId()
-                    ));
+                                    + ". Reserved quantity :: "
+                                    + reservedQuantity
+                                    + ", requested release :: "
+                                    + item.quantity()
+                    );
+                }
 
-            int reservedQuantity = inventory.getReservedQuantity();
+                inventory.setReservedQuantity(
+                        reservedQuantity - item.quantity()
+                );
 
-            if (item.quantity() > reservedQuantity) {
-                throw new InvalidRequestException(
-                        "Cannot release more stock than reserved for product id :: "
-                                + item.productId()
-                                + ". Reserved quantity :: "
-                                + reservedQuantity
-                                + ", requested release :: "
-                                + item.quantity()
+                inventoryRepository.save(inventory);
+
+                log.info(
+                        "Inventory compensation applied. orderId :: {}, "
+                                + "productId :: {}, releasedQuantity :: {}, "
+                                + "remainingReservedQuantity :: {}",
+                        event.orderId(),
+                        item.productId(),
+                        item.quantity(),
+                        inventory.getReservedQuantity()
                 );
             }
 
-            inventory.setReservedQuantity(reservedQuantity - item.quantity());
-            inventoryRepository.save(inventory);
-
-            log.info(
-                    "Inventory compensation applied. orderId :: {}, " +
-                            "productId :: {}, releasedQuantity :: {}, " +
-                            "remainingReservedQuantity :: {}",
-                    event.orderId(),
-                    item.productId(),
-                    item.quantity(),
-                    inventory.getReservedQuantity()
-            );
-
-            // Mark the event as processed in the same transaction.
-            // Mark the event as processed in the same transaction.
+            // Record the request exactly once, after all items are processed.
             ProcessedEvent processedEvent = new ProcessedEvent();
             processedEvent.setEventId(event.eventId());
             processedEvent.setProcessedAt(LocalDateTime.now());
 
             processedEventRepository.save(processedEvent);
 
+            // Persist the successful result in the same transaction.
+            InventoryCompensationResultEvent resultEvent =
+                    new InventoryCompensationResultEvent(
+                            UUID.randomUUID(),
+                            event.eventId(),
+                            event.orderId(),
+                            event.userId(),
+                            true,
+                            null,
+                            LocalDateTime.now()
+                    );
+
+            resultProducer.publishResult(resultEvent);
+
             log.info(
-                    "Inventory compensation transaction completed. orderId :: {}, eventId :: {}",
+                    "Inventory compensation and result outbox record saved "
+                            + "transactionally. orderId :: {}, eventId :: {}",
                     event.orderId(),
                     event.eventId()
             );
-
         }
-    }
-    private void validateEvent(InventoryCompensationRequestedEvent event) {
 
-        if (event == null
-                || event.eventId() == null
-                || event.orderId() == null
-                || event.userId() == null
-                || event.items() == null
-                || event.items().isEmpty()) {
+        private void validateEvent(InventoryCompensationRequestedEvent event) {
 
-            throw new InvalidRequestException(
-                    "Invalid inventory compensation request"
-            );
-        }
+            if (event == null
+                    || event.eventId() == null
+                    || event.orderId() == null
+                    || event.userId() == null
+                    || event.items() == null
+                    || event.items().isEmpty()) {
+
+                throw new InvalidRequestException(
+                        "Invalid inventory compensation request"
+                );
+            }
 
             for (InventoryCompensationItemEvent item : event.items()) {
 
@@ -114,6 +137,6 @@ public class InventoryCompensationTransactionService {
                             "Invalid item in inventory compensation request"
                     );
                 }
-        }
+            }
     }
 }

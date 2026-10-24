@@ -1,9 +1,9 @@
 package com.shopsphere.inventoryservice.kafka;
 
 import com.shopsphere.inventoryservice.dto.event.InventorySagaEvent;
+import com.shopsphere.inventoryservice.service.InventoryOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -11,24 +11,19 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class InventoryEventProducer {
 
-    private static final String INVENTORY_EVENTS_TOPIC = "inventory-events";
+   private final InventoryOutboxService inventoryOutboxService;
 
-    private final KafkaTemplate<String, InventorySagaEvent> kafkaTemplate;
+   public void publishInventoryEvent(InventorySagaEvent event) {
 
-    public void publishInventoryEvent(InventorySagaEvent event) {
+       inventoryOutboxService.saveInventorySagaEvent(event);
 
-        kafkaTemplate.send(
-                INVENTORY_EVENTS_TOPIC,
-                event.orderId().toString(),
-                event
-        );
-
-        log.info(
-                "Published InventorySagaEvent. eventId :: {}, orderEventId :: {}, orderId :: {}, eventType :: {}",
-                event.eventId(),
-                event.orderEventId(),
-                event.orderId(),
-                event.eventType()
-        );
-    }
+       log.info(
+               "InventorySagaEvent recorded in outbox. eventId :: {}, "
+                       + "orderEventId :: {}, orderId :: {}, eventType :: {}",
+               event.eventId(),
+               event.orderEventId(),
+               event.orderId(),
+               event.eventType()
+       );
+   }
 }

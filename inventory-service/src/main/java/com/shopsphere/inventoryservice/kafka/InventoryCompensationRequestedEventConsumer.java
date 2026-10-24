@@ -35,19 +35,20 @@ public class InventoryCompensationRequestedEventConsumer {
         );
 
         try {
+            // The transaction service releases stock and saves the
+            // successful result event to the outbox atomically.
             processingService.processCompensation(event);
-
-            publishResult(event, true, null);
 
         } catch (InvalidRequestException | ResourceNotFoundException ex) {
 
-            // A domain failure: the transaction has rolled back.
+            // The compensation transaction has rolled back.
             log.error(
                     "Inventory compensation failed. orderId :: {}, reason :: {}",
                     event.orderId(),
                     ex.getMessage()
             );
 
+            // Save the failure result separately, after rollback.
             publishResult(event, false, ex.getMessage());
         }
     }

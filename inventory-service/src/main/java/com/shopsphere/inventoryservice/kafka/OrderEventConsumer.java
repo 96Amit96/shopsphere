@@ -1,7 +1,6 @@
 package com.shopsphere.inventoryservice.kafka;
 
 import com.shopsphere.inventoryservice.dto.event.InventoryEventType;
-import com.shopsphere.inventoryservice.dto.event.InventoryReservationItemEvent;
 import com.shopsphere.inventoryservice.dto.event.InventorySagaEvent;
 import com.shopsphere.inventoryservice.dto.event.OrderCreatedEvent;
 import com.shopsphere.inventoryservice.exception.InsufficientStockException;
@@ -38,33 +37,8 @@ public class OrderEventConsumer {
         );
 
      try {
-         boolean processed = orderEventProcessingService.processOrderCreatedEvent(event);
 
-         if (!processed) {
-             return;
-         }
-
-         InventorySagaEvent inventoryEvent = new InventorySagaEvent(
-                 UUID.randomUUID(),
-                 event.eventId(),
-                 event.orderId(),
-                 event.userId(),
-                 InventoryEventType.INVENTORY_RESERVED,
-                 event.items()
-                         .stream()
-                         .map(item ->
-                                 new InventoryReservationItemEvent(
-                                         item.productId(),
-                                         item.quantity()
-                                 )
-                         )
-                         .toList(),
-                 null,
-                 null,
-                 LocalDateTime.now()
-         );
-
-         inventoryEventProducer.publishInventoryEvent(inventoryEvent);
+         orderEventProcessingService.processOrderCreatedEvent((event));
 
      } catch (InsufficientStockException ex) {
 

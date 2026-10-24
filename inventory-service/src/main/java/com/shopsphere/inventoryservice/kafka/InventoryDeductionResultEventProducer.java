@@ -1,6 +1,7 @@
 package com.shopsphere.inventoryservice.kafka;
 
 import com.shopsphere.inventoryservice.dto.event.InventoryDeductionResultEvent;
+import com.shopsphere.inventoryservice.service.InventoryOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -11,40 +12,20 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class InventoryDeductionResultEventProducer {
 
-    private static final String TOPIC = "inventory-deduction-results";
-
-    private final KafkaTemplate<String, InventoryDeductionResultEvent>
-            inventoryDeductionResultKafkaTemplate;
+    private final InventoryOutboxService inventoryOutboxService;
 
     public void publishResult(InventoryDeductionResultEvent event) {
 
-        inventoryDeductionResultKafkaTemplate.send(
-                TOPIC,
-                event.orderId().toString(),
-                event
-        ).whenComplete((result, exception) -> {
+        inventoryOutboxService.saveInventoryDeductionResultEvent(event);
 
-            if (exception != null) {
-                log.error(
-                        "Failed to publish inventory deduction result. " +
-                                "orderId :: {}, requestEventId :: {}",
-                        event.orderId(),
-                        event.deductionRequestEventId(),
-                        exception
-                );
-                return;
-            }
-
-            log.info(
-                    "Published InventoryDeductionResultEvent. " +
-                            "orderId :: {}, successful :: {}, topic :: {}, " +
-                            "partition :: {}, offset :: {}",
-                    event.orderId(),
-                    event.successful(),
-                    result.getRecordMetadata().topic(),
-                    result.getRecordMetadata().partition(),
-                    result.getRecordMetadata().offset()
-            );
-        });
+        log.info(
+                "InventoryDeductionResultEvent recorded in outbox. "
+                        + "eventId :: {}, requestEventId :: {}, "
+                        + "orderId :: {}, successful :: {}",
+                event.eventId(),
+                event.deductionRequestEventId(),
+                event.orderId(),
+                event.successful()
+        );
     }
 }

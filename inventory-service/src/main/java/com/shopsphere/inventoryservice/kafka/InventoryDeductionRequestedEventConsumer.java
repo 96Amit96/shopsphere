@@ -36,9 +36,6 @@ public class InventoryDeductionRequestedEventConsumer {
 
         try {
             processingService.processDeduction(event);
-
-            publishResult(event, true, null);
-
         } catch (InvalidRequestException | ResourceNotFoundException ex) {
 
             log.error(

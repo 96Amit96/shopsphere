@@ -1,7 +1,6 @@
 package com.shopsphere.inventoryservice.service;
 
-import com.shopsphere.inventoryservice.dto.event.OrderCreatedEvent;
-import com.shopsphere.inventoryservice.dto.event.OrderItemEvent;
+import com.shopsphere.inventoryservice.dto.event.*;
 import com.shopsphere.inventoryservice.dto.request.StockReservationRequest;
 import com.shopsphere.inventoryservice.entity.ProcessedEvent;
 import com.shopsphere.inventoryservice.repository.ProcessedEventRepository;
@@ -11,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +19,7 @@ public class OrderEventTransactionService {
 
     private final ProcessedEventRepository processedEventRepository;
     private final InventoryReservationRetryService inventoryReservationRetryService;
+    private final InventoryOutboxService inventoryOutboxService;
 
     @Transactional
     public boolean processOrderCreatedEvent(OrderCreatedEvent event) {
@@ -65,6 +66,30 @@ public class OrderEventTransactionService {
                 event.eventId(),
                 event.orderId()
         );
+
+        InventorySagaEvent inventoryEvent = new InventorySagaEvent(
+                UUID.randomUUID(),
+                event.eventId(),
+                event.orderId(),
+                event.userId(),
+                InventoryEventType.INVENTORY_RESERVED,
+                event.items()
+                        .stream()
+                        .map(item ->
+                                new InventoryReservationItemEvent(
+                                        item.productId(),
+                                        item.quantity()
+                                )
+                        )
+                        .toList(),
+                null,
+                null,
+                LocalDateTime.now()
+        );
+
+        log.info("Save inventory saga event :: {}", inventoryEvent.eventId());
+
+        inventoryOutboxService.saveInventorySagaEvent(inventoryEvent);
 
         return true;
     }
