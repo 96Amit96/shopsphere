@@ -17,6 +17,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.http.MediaType;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -67,5 +70,24 @@ public class ProductControllerTest {
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"));
 
         verify(productService).getProductById(10L);
+    }
+
+    @Test
+    void createProduct_shouldReturnBadRequestWhenRequiredFieldsAreMissing()
+            throws Exception {
+
+        mockMvc.perform(post("/api/v1/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message")
+                        .value("Validation failed"))
+                .andExpect(jsonPath("$.data.sku")
+                        .value("SKU is required"));
+
+        verifyNoInteractions(productService);
     }
 }
