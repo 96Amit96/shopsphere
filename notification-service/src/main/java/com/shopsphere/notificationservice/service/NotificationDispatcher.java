@@ -1,0 +1,94 @@
+package com.shopsphere.notificationservice.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shopsphere.notificationservice.dto.event.OrderCreatedEvent;
+import com.shopsphere.notificationservice.dto.event.PaymentEvent;
+import com.shopsphere.notificationservice.entity.ProcessedNotificationEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class NotificationDispatcher {
+
+    private static final int MAX_ATTEMPTS = 5;
+
+    private final ObjectMapper objectMapper;
+    private final ProcessedNotificationEventService processedEventService;
+    private final OrderNotificationService orderNotificationService;
+    private final PaymentNotificationService paymentNotificationService;
+
+    @Scheduled(fixedDelayString =
+            "${notification.dispatcher.fixed-delay-ms:5000}")
+    public void dispatchPendingNotifications() {
+
+        var pendingEvents =
+                processedEventService.findDuePendingEvents();
+
+        for (ProcessedNotificationEvent event : pendingEvents) {
+            dispatch(event);
+        }
+    }
+
+    private void dispatch(ProcessedNotificationEvent event) {
+
+        try {
+            switch (event.getEventType()) {
+
+                case "ORDER_CREATED" -> {
+                    OrderCreatedEvent orderEvent =
+                            objectMapper.readValue(
+                                    event.getPayload(),
+                                    OrderCreatedEvent.class
+                            );
+
+                    orderNotificationService.notifyOrderCreated(orderEvent);
+                }
+
+                case "PAYMENT_EVENT" -> {
+                    PaymentEvent paymentEvent =
+                            objectMapper.readValue(
+                                    event.getPayload(),
+                                    PaymentEvent.class
+                            );
+
+                    paymentNotificationService.notifyPaymentStatus(
+                            paymentEvent
+                    );
+                }
+
+                default -> throw new IllegalArgumentException(
+                        "Unsupported notification event type: "
+                                + event.getEventType()
+                );
+            }
+
+            processedEventService.markSent(event.getEventId());
+
+            log.info(
+                    "Notification marked SENT. eventId={}, type={}",
+                    event.getEventId(),
+                    event.getEventType()
+            );
+
+        } catch (Exception exception) {
+
+            log.error(
+                    "Notification delivery attempt failed. eventId={}, type={}",
+                    event.getEventId(),
+                    event.getEventType(),
+                    exception
+            );
+
+            processedEventService.recordFailure(
+                    event.getEventId(),
+                    exception,
+                    MAX_ATTEMPTS
+            );
+        }
+    }
+
+}

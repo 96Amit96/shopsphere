@@ -32,9 +32,13 @@ public class OrderCreatedEventConsumer {
                 event.orderId()
         );
 
-        boolean firstProcessing = processedNotificationEventService.markAsProcessed(event.eventId(), "ORDER_CREATED");
+        boolean newlyQueued = processedNotificationEventService.enqueueIfAbsent(
+                event.eventId(),
+                "ORDER_CREATED",
+                message
+        );
 
-        if (!firstProcessing) {
+        if (!newlyQueued) {
             log.warn(
                     "Duplicate order event skipped. eventId={}, orderId={}",
                     event.eventId(),
@@ -43,6 +47,11 @@ public class OrderCreatedEventConsumer {
             return;
         }
 
-        orderNotificationService.notifyOrderCreated(event);
+        log.info(
+                "Order notification queued. eventId={}, orderId={}, userId={}",
+                event.eventId(),
+                event.orderId(),
+                event.userId()
+        );
     }
 }

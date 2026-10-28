@@ -1,3 +1,7 @@
+notification:
+  dispatcher:
+    fixed-delay-ms: 5000
+
 server:
   port: 8087
 

@@ -34,12 +34,14 @@ public class PaymentEventConsumer {
                 event.paymentStatus()
         );
 
-        boolean firstProcessing = processedEventService.markAsProcessed(
+        boolean newlyQueued = processedEventService.enqueueIfAbsent(
                 event.eventId(),
-                "PAYMENT_EVENT"
+                "PAYMENT_EVENT",
+                message
         );
 
-        if (!firstProcessing) {
+
+        if (!newlyQueued) {
             log.warn(
                     "Duplicate payment event skipped. eventId={}, orderId={}",
                     event.eventId(),
@@ -48,7 +50,12 @@ public class PaymentEventConsumer {
             return;
         }
 
-        paymentNotificationService.notifyPaymentStatus(event);
+        log.info(
+                "Payment notification queued. eventId={}, orderId={}, status={}",
+                event.eventId(),
+                event.orderId(),
+                event.paymentStatus()
+        );
     }
 
 }

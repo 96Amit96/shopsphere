@@ -1,12 +1,20 @@
 package com.shopsphere.notificationservice.entity;
 
+import com.shopsphere.notificationservice.enums.NotificationDeliveryStatus;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "processed_notification_events")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProcessedNotificationEvent {
 
     @Id
@@ -19,13 +27,36 @@ public class ProcessedNotificationEvent {
     @Column(name = "processed_at", nullable = false, updatable = false)
     private LocalDateTime processedAt;
 
-    protected ProcessedNotificationEvent() {
-        // Required by JPA
-    }
+    @Column(name = "payload", columnDefinition = "TEXT")
+    private String payload;
 
-    public ProcessedNotificationEvent(UUID eventId, String eventType) {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private NotificationDeliveryStatus status =
+            NotificationDeliveryStatus.PENDING;
+
+    @Column(name = "attempts", nullable = false)
+    private int attempts;
+
+    @Column(name = "last_error", columnDefinition = "TEXT")
+    private String lastError;
+
+    @Column(name = "next_attempt_at")
+    private LocalDateTime nextAttemptAt;
+
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+
+    public ProcessedNotificationEvent(
+            UUID eventId,
+            String eventType,
+            String payload) {
+
         this.eventId = eventId;
         this.eventType = eventType;
+        this.payload = payload;
+        this.status = NotificationDeliveryStatus.PENDING;
+        this.attempts = 0;
     }
 
     @PrePersist
@@ -33,17 +64,9 @@ public class ProcessedNotificationEvent {
         if (processedAt == null) {
             processedAt = LocalDateTime.now();
         }
-    }
 
-    public UUID getEventId() {
-        return eventId;
-    }
-
-    public String getEventType() {
-        return eventType;
-    }
-
-    public LocalDateTime getProcessedAt() {
-        return processedAt;
+        if (status == null) {
+            status = NotificationDeliveryStatus.PENDING;
+        }
     }
 }
