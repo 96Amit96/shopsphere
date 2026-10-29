@@ -8,6 +8,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -45,16 +46,13 @@ public class ProcessedNotificationEventService {
         ) == 1;
     }
 
-    /**
-     * Retrieve pending notifications whose retry time has arrived.
-     */
-    @Transactional(readOnly = true)
-    public List<ProcessedNotificationEvent> findDuePendingEvents() {
-        return processedNotificationEventRepository
-                .findTop100ByStatusAndNextAttemptAtLessThanEqualOrderByProcessedAtAsc(
-                        NotificationDeliveryStatus.PENDING,
-                        LocalDateTime.now()
-                );
+    @Transactional
+    public List<ProcessedNotificationEvent> claimDuePendingEvents() {
+
+        return processedNotificationEventRepository.claimDuePendingEvents(
+                LocalDateTime.now(),
+                100
+        );
     }
 
     /**
@@ -69,6 +67,7 @@ public class ProcessedNotificationEventService {
         event.setSentAt(LocalDateTime.now());
         event.setNextAttemptAt(null);
         event.setLastError(null);
+        event.setProcessingStartedAt(null);
 
         processedNotificationEventRepository.save(event);
     }
@@ -100,6 +99,7 @@ public class ProcessedNotificationEventService {
         }
 
         event.setLastError(errorMessage);
+        event.setProcessingStartedAt(null);
 
         if (attempts >= maxAttempts) {
             event.setStatus(NotificationDeliveryStatus.FAILED);
@@ -140,5 +140,20 @@ public class ProcessedNotificationEventService {
         }
 
         return processedNotificationEventRepository.insertIfAbsent(eventId, eventType) == 1;
+    }
+
+    @Transactional
+    public int recoverStaleClaims(Duration staleTimeout) {
+
+        if (staleTimeout == null
+                || staleTimeout.isZero()
+                || staleTimeout.isNegative()) {
+            throw new IllegalArgumentException(
+                    "Stale timeout must be positive");
+        }
+
+        LocalDateTime cutoff = LocalDateTime.now().minus(staleTimeout);
+
+        return processedNotificationEventRepository.recoverStaleProcessingEvents(cutoff);
     }
 }

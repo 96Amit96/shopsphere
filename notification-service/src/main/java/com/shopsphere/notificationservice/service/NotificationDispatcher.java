@@ -5,9 +5,12 @@ import com.shopsphere.notificationservice.dto.event.OrderCreatedEvent;
 import com.shopsphere.notificationservice.dto.event.PaymentEvent;
 import com.shopsphere.notificationservice.entity.ProcessedNotificationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
@@ -15,6 +18,9 @@ import org.springframework.stereotype.Component;
 public class NotificationDispatcher {
 
     private static final int MAX_ATTEMPTS = 5;
+
+    @Value("${notification.dispatcher.stale-claim-timeout-ms:300000}")
+    private long staleClaimTimeoutMs;
 
     private final ObjectMapper objectMapper;
     private final ProcessedNotificationEventService processedEventService;
@@ -26,7 +32,7 @@ public class NotificationDispatcher {
     public void dispatchPendingNotifications() {
 
         var pendingEvents =
-                processedEventService.findDuePendingEvents();
+                processedEventService.claimDuePendingEvents();
 
         for (ProcessedNotificationEvent event : pendingEvents) {
             dispatch(event);
@@ -87,6 +93,22 @@ public class NotificationDispatcher {
                     event.getEventId(),
                     exception,
                     MAX_ATTEMPTS
+            );
+        }
+    }
+
+    @Scheduled(fixedDelayString =
+            "${notification.dispatcher.recovery-interval-ms:60000}")
+    public void recoverStaleNotifications() {
+
+        int recovered = processedEventService.recoverStaleClaims(
+                Duration.ofMillis(staleClaimTimeoutMs)
+        );
+
+        if (recovered > 0) {
+            log.warn(
+                    "Recovered {} stale notification claims",
+                    recovered
             );
         }
     }

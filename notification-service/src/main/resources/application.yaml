@@ -1,6 +1,8 @@
 notification:
   dispatcher:
     fixed-delay-ms: 5000
+    recovery-interval-ms: 60000
+    stale-claim-timeout-ms: 300000
 
 server:
   port: 8087

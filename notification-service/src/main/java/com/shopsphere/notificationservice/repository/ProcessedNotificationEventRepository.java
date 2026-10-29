@@ -12,7 +12,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-public interface ProcessedNotificationEventRepository extends JpaRepository<ProcessedNotificationEvent, UUID> {
+public interface ProcessedNotificationEventRepository
+        extends JpaRepository<ProcessedNotificationEvent, UUID>,
+        ProcessedNotificationEventClaimRepository
+{
 
     @Modifying
     @Transactional
@@ -46,9 +49,20 @@ public interface ProcessedNotificationEventRepository extends JpaRepository<Proc
             @Param("eventType") String eventType
     );
 
-    List<ProcessedNotificationEvent>
-    findTop100ByStatusAndNextAttemptAtLessThanEqualOrderByProcessedAtAsc(
-            NotificationDeliveryStatus status,
-            LocalDateTime now
+    @Modifying
+    @Transactional
+    @Query(value = """
+        UPDATE processed_notification_events
+        SET status = 'PENDING',
+            processing_started_at = NULL,
+            next_attempt_at = CURRENT_TIMESTAMP,
+            last_error = 'Stale processing claim recovered'
+        WHERE status = 'PROCESSING'
+          AND processing_started_at IS NOT NULL
+          AND processing_started_at < :cutoff
+        """, nativeQuery = true)
+    int recoverStaleProcessingEvents(
+            @Param("cutoff") LocalDateTime cutoff
     );
+
 }
