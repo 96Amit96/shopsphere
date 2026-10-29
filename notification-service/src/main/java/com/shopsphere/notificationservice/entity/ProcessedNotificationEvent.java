@@ -41,6 +41,9 @@ public class ProcessedNotificationEvent {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
+    @Column(name = "processing_started_at")
+    private LocalDateTime processingStartedAt;
+
     @Column(name = "next_attempt_at")
     private LocalDateTime nextAttemptAt;
 
