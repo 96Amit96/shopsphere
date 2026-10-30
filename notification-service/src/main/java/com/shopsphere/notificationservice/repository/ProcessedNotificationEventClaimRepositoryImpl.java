@@ -7,6 +7,7 @@ import jakarta.persistence.PersistenceContext;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 public class ProcessedNotificationEventClaimRepositoryImpl implements ProcessedNotificationEventClaimRepository{
 
@@ -44,6 +45,7 @@ public class ProcessedNotificationEventClaimRepositoryImpl implements ProcessedN
         for (ProcessedNotificationEvent event : events) {
             event.setStatus(NotificationDeliveryStatus.PROCESSING);
             event.setProcessingStartedAt(now);
+            event.setClaimToken(UUID.randomUUID());
             event.setNextAttemptAt(null);
         }
 

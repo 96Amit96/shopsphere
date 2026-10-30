@@ -72,13 +72,20 @@ public class NotificationDispatcher {
                 );
             }
 
-            processedEventService.markSent(event.getEventId());
+           boolean markedSent = processedEventService.markSent(event.getEventId(), event.getClaimToken());
 
-            log.info(
-                    "Notification marked SENT. eventId={}, type={}",
-                    event.getEventId(),
-                    event.getEventType()
-            );
+            if (markedSent) {
+                log.info(
+                        "Notification marked SENT. eventId={}, type={}",
+                        event.getEventId(),
+                        event.getEventType()
+                );
+            } else {
+                log.warn(
+                        "Ignoring SENT update because the claim is no longer valid. eventId={}",
+                        event.getEventId()
+                );
+            }
 
         } catch (Exception exception) {
 
@@ -89,11 +96,19 @@ public class NotificationDispatcher {
                     exception
             );
 
-            processedEventService.recordFailure(
+            boolean recordedFailure = processedEventService.recordFailure(
                     event.getEventId(),
+                    event.getClaimToken(),
                     exception,
                     MAX_ATTEMPTS
             );
+
+            if (!recordedFailure) {
+                log.warn(
+                        "Ignoring failure update because the claim is no longer valid. eventId={}",
+                        event.getEventId()
+                );
+            }
         }
     }
 

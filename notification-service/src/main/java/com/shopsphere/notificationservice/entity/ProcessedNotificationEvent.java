@@ -41,6 +41,9 @@ public class ProcessedNotificationEvent {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
+    @Column(name = "claim_token")
+    private UUID claimToken;
+
     @Column(name = "processing_started_at")
     private LocalDateTime processingStartedAt;
 

@@ -55,71 +55,70 @@ public class ProcessedNotificationEventService {
         );
     }
 
-    /**
-     * Mark a notification as successfully delivered.
-     */
     @Transactional
-    public void markSent(UUID eventId) {
+    public boolean markSent(UUID eventId, UUID claimToken) {
+        if (claimToken == null) {
+            return false;
+        }
 
-        ProcessedNotificationEvent event = getEvent(eventId);
+        int updatedRows = processedNotificationEventRepository.markSentIfClaimed(
+                eventId,
+                claimToken,
+                LocalDateTime.now()
+        );
 
-        event.setStatus(NotificationDeliveryStatus.SENT);
-        event.setSentAt(LocalDateTime.now());
-        event.setNextAttemptAt(null);
-        event.setLastError(null);
-        event.setProcessingStartedAt(null);
-
-        processedNotificationEventRepository.save(event);
+        return updatedRows == 1;
     }
 
-    /**
-     * Record a failed attempt and schedule a retry,
-     * or mark the notification as permanently failed.
-     */
     @Transactional
-    public void recordFailure(
+    public boolean recordFailure(
             UUID eventId,
+            UUID claimToken,
             Exception exception,
-            int maxAttempts) {
-
+            int maxAttempts
+    ) {
         if (maxAttempts < 1) {
             throw new IllegalArgumentException(
-                    "Maximum attempts must be at least 1");
+                    "maxAttempts must be at least 1"
+            );
+        }
+
+        if (claimToken == null) {
+            return false;
         }
 
         ProcessedNotificationEvent event = getEvent(eventId);
 
-        int attempts = event.getAttempts() + 1;
-        event.setAttempts(attempts);
+        // The next failure attempt number.
+        int nextAttempt = event.getAttempts() + 1;
 
-        String errorMessage = exception.getMessage();
-
-        if (errorMessage == null || errorMessage.isBlank()) {
-            errorMessage = exception.getClass().getSimpleName();
+        String lastError = exception.getMessage();
+        if (lastError == null || lastError.isBlank()) {
+            lastError = exception.getClass().getSimpleName();
         }
 
-        event.setLastError(errorMessage);
-        event.setProcessingStartedAt(null);
+        LocalDateTime nextAttemptAt = null;
 
-        if (attempts >= maxAttempts) {
-            event.setStatus(NotificationDeliveryStatus.FAILED);
-            event.setNextAttemptAt(null);
-
-        } else {
-            event.setStatus(NotificationDeliveryStatus.PENDING);
-
-            // Exponential backoff: 30s, 60s, 120s, up to 1 hour.
+        if (nextAttempt < maxAttempts) {
+            // Exponential backoff: 30, 60, 120, 240... seconds.
             long delaySeconds = Math.min(
-                    30L * (1L << Math.min(attempts - 1, 7)),
+                    30L * (1L << Math.min(nextAttempt - 1, 10)),
                     3600L
             );
 
-            event.setNextAttemptAt(
-                    LocalDateTime.now().plusSeconds(delaySeconds)
-            );
+            nextAttemptAt = LocalDateTime.now()
+                    .plusSeconds(delaySeconds);
         }
 
-        processedNotificationEventRepository.save(event);
+        int updatedRows = processedNotificationEventRepository.recordFailureIfClaimed(
+                eventId,
+                claimToken,
+                lastError,
+                maxAttempts,
+                nextAttemptAt
+        );
+
+        return updatedRows == 1;
     }
 
     private ProcessedNotificationEvent getEvent(UUID eventId) {

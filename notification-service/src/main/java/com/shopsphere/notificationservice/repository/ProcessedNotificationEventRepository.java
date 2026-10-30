@@ -55,6 +55,7 @@ public interface ProcessedNotificationEventRepository
         UPDATE processed_notification_events
         SET status = 'PENDING',
             processing_started_at = NULL,
+            claim_token = NULL,
             next_attempt_at = CURRENT_TIMESTAMP,
             last_error = 'Stale processing claim recovered'
         WHERE status = 'PROCESSING'
@@ -65,4 +66,49 @@ public interface ProcessedNotificationEventRepository
             @Param("cutoff") LocalDateTime cutoff
     );
 
+    @Modifying
+    @Query(value = """
+    UPDATE processed_notification_events
+    SET status = 'SENT',
+        sent_at = :sentAt,
+        next_attempt_at = NULL,
+        last_error = NULL,
+        processing_started_at = NULL,
+        claim_token = NULL
+    WHERE event_id = :eventId
+      AND status = 'PROCESSING'
+      AND claim_token = :claimToken
+    """, nativeQuery = true)
+    int markSentIfClaimed(
+            @Param("eventId") UUID eventId,
+            @Param("claimToken") UUID claimToken,
+            @Param("sentAt") LocalDateTime sentAt
+    );
+
+    @Modifying
+    @Query(value = """
+    UPDATE processed_notification_events
+    SET attempts = attempts + 1,
+        last_error = :lastError,
+        processing_started_at = NULL,
+        claim_token = NULL,
+        status = CASE
+            WHEN attempts + 1 >= :maxAttempts THEN 'FAILED'
+            ELSE 'PENDING'
+        END,
+        next_attempt_at = CASE
+            WHEN attempts + 1 >= :maxAttempts THEN NULL
+            ELSE CAST(:nextAttemptAt AS timestamp)
+        END
+    WHERE event_id = :eventId
+      AND status = 'PROCESSING'
+      AND claim_token = :claimToken
+    """, nativeQuery = true)
+    int recordFailureIfClaimed(
+            @Param("eventId") UUID eventId,
+            @Param("claimToken") UUID claimToken,
+            @Param("lastError") String lastError,
+            @Param("maxAttempts") int maxAttempts,
+            @Param("nextAttemptAt") LocalDateTime nextAttemptAt
+    );
 }
