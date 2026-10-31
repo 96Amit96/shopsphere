@@ -53,6 +53,13 @@ public class AuthUser extends BaseEntity implements UserDetails {
     @Column(nullable = false)
     private Boolean credentialsNonExpired = true;
 
+    @Column(name = "profile_version", nullable = false)
+    private long profileVersion = 1L;
+
+    public void incrementProfileVersion() {
+        this.profileVersion++;
+    }
+
     @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
             name = "auth_user_roles",

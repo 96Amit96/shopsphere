@@ -16,6 +16,7 @@ import com.shopsphere.authservice.repository.AuthUserRepository;
 import com.shopsphere.authservice.repository.RoleRepository;
 import com.shopsphere.authservice.security.jwt.JwtService;
 import com.shopsphere.authservice.security.jwt.RefreshTokenService;
+import com.shopsphere.authservice.service.AuthOutboxService;
 import com.shopsphere.authservice.service.AuthService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -42,11 +43,12 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final AuthOutboxService authOutboxService;
 
 
     @Override
+    @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        log.info("request: {}", request);
 
         if(authUserRepository.existsByUsername(request.username())) {
             throw new DuplicateResourceException("Username already exists");
@@ -64,8 +66,6 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Default role ROLE_USER not found"));
 
-        log.info("Role {}",role);
-
         String encodedPassword = passwordEncoder.encode(request.password());
 
        AuthUser authUser = new AuthUser();
@@ -80,6 +80,15 @@ public class AuthServiceImpl implements AuthService {
         authUser.addRole(role);
 
         AuthUser savedUser = authUserRepository.save(authUser);
+
+        log.info("User registered successfully. userId={}", savedUser.getId());
+
+        authOutboxService.saveUserProfileEvent(
+                savedUser,
+                "USER_PROFILE_CREATED"
+        );
+
+        log.info("AuthOutboxEvent User saved successfully. userId={}", savedUser.getId());
 
         return authUserMapper.toRegisterResponse(savedUser);
     }

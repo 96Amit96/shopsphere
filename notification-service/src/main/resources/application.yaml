@@ -1,11 +1,15 @@
+server:
+  port: 8087
+
 notification:
   dispatcher:
     fixed-delay-ms: 5000
     recovery-interval-ms: 60000
     stale-claim-timeout-ms: 300000
 
-server:
-  port: 8087
+  email:
+    from: no-reply@shopsphere.local
+    enabled: true
 
 spring:
   application:
@@ -22,12 +26,27 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
-
     consumer:
       group-id: notification-service
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  mail:
+    host: sandbox.smtp.mailtrap.io
+    port: 2525
+    username: 23bf8e69bb86d4
+    password: 319465ad3f947e
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 eureka:
   client:
