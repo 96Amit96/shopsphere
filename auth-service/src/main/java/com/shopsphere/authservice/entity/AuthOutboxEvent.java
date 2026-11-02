@@ -63,7 +63,7 @@ public class AuthOutboxEvent {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
-    @Column(name = "next_attempt_at", nullable = false)
+    @Column(name = "next_attempt_at")
     private LocalDateTime nextAttemptAt;
 
     @Column(name = "claimed_at")

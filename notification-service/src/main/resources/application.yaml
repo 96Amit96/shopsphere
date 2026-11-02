@@ -2,6 +2,10 @@ server:
   port: 8087
 
 notification:
+  user-profile:
+    topic:
+      user-profile-events
+
   dispatcher:
     fixed-delay-ms: 5000
     recovery-interval-ms: 60000
