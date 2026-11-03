@@ -3,6 +3,7 @@ package com.shopsphere.notificationservice.kafka;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopsphere.notificationservice.dto.event.UserProfileEvent;
+import com.shopsphere.notificationservice.service.ProcessedNotificationEventService;
 import com.shopsphere.notificationservice.service.UserNotificationProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,10 +17,11 @@ public class UserProfileEventConsumer {
 
     private final ObjectMapper objectMapper;
     private final UserNotificationProfileService profileService;
+    private final ProcessedNotificationEventService processedNotificationEventService;
 
     @KafkaListener(
             topics = "${notification.user-profile.topic:user-profile-events}",
-            groupId = "${spring.kafka.consumer.group-id:notification-service}"
+            groupId = "${notification.user-profile.group-id:notification-user-profile}"
     )
     public void consumeUserProfileEvent(String message)
             throws JsonProcessingException {
@@ -38,11 +40,18 @@ public class UserProfileEventConsumer {
 
         profileService.synchronizeProfile(event);
 
-        log.info(
-                "Processed user profile event. eventId={}, userId={}, version={}",
-                event.eventId(),
-                event.userId(),
-                event.profileVersion()
-        );
+        if ("USER_PROFILE_CREATED".equals(event.eventType())) {
+            processedNotificationEventService.enqueueIfAbsent(
+                    event.eventId(),
+                    event.eventType(),
+                    message
+            );
+
+            log.info(
+                    "Welcome notification enqueued. userId={}, eventId={}",
+                    event.userId(),
+                    event.eventId()
+            );
+        }
     }
 }

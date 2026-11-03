@@ -3,8 +3,8 @@ server:
 
 notification:
   user-profile:
-    topic:
-      user-profile-events
+    topic: user-profile-events
+    group-id: notification-user-profile-welcome-v2
 
   dispatcher:
     fixed-delay-ms: 5000
@@ -12,7 +12,7 @@ notification:
     stale-claim-timeout-ms: 300000
 
   email:
-    from: no-reply@shopsphere.local
+    from: amitnavale97@gmail.com
     enabled: true
 
 spring:
@@ -37,10 +37,10 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
   mail:
-    host: sandbox.smtp.mailtrap.io
-    port: 2525
-    username: 23bf8e69bb86d4
-    password: 319465ad3f947e
+    host: smtp.gmail.com
+    port: 587
+    username: amitnavale97@gmail.com
+    password: jhgf sjve pclu udkc
     properties:
       mail:
         smtp:

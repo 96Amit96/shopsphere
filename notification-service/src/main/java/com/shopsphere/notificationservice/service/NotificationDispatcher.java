@@ -3,6 +3,7 @@ package com.shopsphere.notificationservice.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopsphere.notificationservice.dto.event.OrderCreatedEvent;
 import com.shopsphere.notificationservice.dto.event.PaymentEvent;
+import com.shopsphere.notificationservice.dto.event.UserProfileEvent;
 import com.shopsphere.notificationservice.entity.ProcessedNotificationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +27,7 @@ public class NotificationDispatcher {
     private final ProcessedNotificationEventService processedEventService;
     private final OrderNotificationService orderNotificationService;
     private final PaymentNotificationService paymentNotificationService;
+    private final WelcomeNotificationService welcomeNotificationService;
 
     @Scheduled(fixedDelayString =
             "${notification.dispatcher.fixed-delay-ms:5000}")
@@ -43,6 +45,16 @@ public class NotificationDispatcher {
 
         try {
             switch (event.getEventType()) {
+
+                case "USER_PROFILE_CREATED" -> {
+                    UserProfileEvent profileEvent =
+                            objectMapper.readValue(
+                                    event.getPayload(),
+                                    UserProfileEvent.class
+                            );
+
+                    welcomeNotificationService.sendWelcomeEmail(profileEvent);
+                }
 
                 case "ORDER_CREATED" -> {
                     OrderCreatedEvent orderEvent =
