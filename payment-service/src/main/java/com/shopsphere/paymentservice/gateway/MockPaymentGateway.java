@@ -18,7 +18,7 @@ public class MockPaymentGateway implements PaymentGateway{
         );
 
         boolean successful = payment.getAmount()
-                .compareTo(BigDecimal.valueOf(100000)) <= 0;
+                .compareTo(BigDecimal.valueOf(10)) <= 0;
 
         if (successful) {
 

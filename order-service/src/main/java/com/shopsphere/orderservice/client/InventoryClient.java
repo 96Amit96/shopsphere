@@ -1,7 +1,5 @@
 package com.shopsphere.orderservice.client;
 
-import com.shopsphere.orderservice.config.FeignConfig;
-import com.shopsphere.orderservice.config.FeignErrorDecoder;
 import com.shopsphere.orderservice.config.InventoryFeignConfig;
 import com.shopsphere.orderservice.dto.request.StockReservationRequest;
 import com.shopsphere.orderservice.dto.response.ApiResponse;
