@@ -1,6 +1,8 @@
 package com.shopsphere.orderservice.service;
 
 import com.shopsphere.orderservice.dto.event.InventoryDeductionResultEvent;
+import com.shopsphere.orderservice.dto.event.OrderItemEvent;
+import com.shopsphere.orderservice.dto.event.OrderStatusNotificationEvent;
 import com.shopsphere.orderservice.entity.Order;
 import com.shopsphere.orderservice.entity.ProcessedEvent;
 import com.shopsphere.orderservice.enums.OrderStatus;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ public class InventoryDeductionResultProcessingService {
 
     private final OrderRepository orderRepository;
     private final ProcessedEventRepository processedEventRepository;
+    private final OrderOutboxService orderOutboxService;
 
     @Transactional
     public void process(InventoryDeductionResultEvent event) {
@@ -71,6 +75,32 @@ public class InventoryDeductionResultProcessingService {
                 log.info(
                         "Inventory deduction confirmed. Order Saga completed. orderId :: {}",
                         event.orderId()
+                );
+
+                // Create order confirmation notification event.
+                OrderStatusNotificationEvent notificationEvent =
+                        new OrderStatusNotificationEvent(
+                                UUID.randomUUID(),
+                                order.getId(),
+                                order.getUserId(),
+                                order.getTotalAmount(),
+                                OrderStatus.CONFIRMED.name(),
+                                null,
+                                order.getItems()
+                                        .stream()
+                                        .map(item -> new OrderItemEvent(
+                                                item.getProductId(),
+                                                item.getProductName(),
+                                                item.getUnitPrice(),
+                                                item.getQuantity()
+                                        ))
+                                        .toList()
+                        );
+                orderOutboxService.saveOrderConfirmedEvent(notificationEvent);
+
+                log.info(
+                        "Order confirmation notification recorded in outbox. orderId :: {}",
+                        order.getId()
                 );
             }
 

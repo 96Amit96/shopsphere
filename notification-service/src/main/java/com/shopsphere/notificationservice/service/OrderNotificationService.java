@@ -49,7 +49,7 @@ public class OrderNotificationService {
                 ? profile.getFirstName().trim()
                 : "there";
 
-        String htmlBody = buildOrderConfirmationEmail(
+        String htmlBody = buildOrderReceivedEmail(
                 firstName,
                 event
         );
@@ -57,7 +57,7 @@ public class OrderNotificationService {
         // Send the order confirmation email.
         boolean sent = emailService.sendHtmlEmail(
                 profile.getEmail(),
-                "Your ShopSphere Order #" + event.orderId() + " is Confirmed!",
+                "Your ShopSphere Order #" + event.orderId() + " Received!",
                 htmlBody
         );
 
@@ -69,7 +69,7 @@ public class OrderNotificationService {
         }
 
         log.info(
-                "Order confirmation email delivered successfully. " +
+                "Order received email delivered successfully. " +
                         "orderId={}, userId={}, eventId={}",
                 event.orderId(),
                 event.userId(),
@@ -77,7 +77,7 @@ public class OrderNotificationService {
         );
     }
 
-    private String buildOrderConfirmationEmail(
+    private String buildOrderReceivedEmail(
             String firstName,
             OrderCreatedEvent event
     ) {
@@ -148,14 +148,15 @@ public class OrderNotificationService {
                                 padding:30px;border-radius:8px;">
 
                         <h2 style="color:#2563eb;">
-                            Order Confirmed!
+                            Order Received!
                         </h2>
 
                         <p>Hi %s,</p>
 
                         <p>
                             Thank you for shopping with ShopSphere.
-                            Your order has been successfully received.
+                            We have received your order and it is currently being processed.
+                            We will send you another email once your order is confirmed.
                         </p>
 
                         <div style="background:#f0f7ff;padding:15px;

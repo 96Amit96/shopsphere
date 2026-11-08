@@ -2,6 +2,7 @@ package com.shopsphere.notificationservice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopsphere.notificationservice.dto.event.OrderCreatedEvent;
+import com.shopsphere.notificationservice.dto.event.OrderStatusNotificationEvent;
 import com.shopsphere.notificationservice.dto.event.PaymentEvent;
 import com.shopsphere.notificationservice.dto.event.UserProfileEvent;
 import com.shopsphere.notificationservice.entity.ProcessedNotificationEvent;
@@ -28,6 +29,8 @@ public class NotificationDispatcher {
     private final OrderNotificationService orderNotificationService;
     private final PaymentNotificationService paymentNotificationService;
     private final WelcomeNotificationService welcomeNotificationService;
+    private final OrderConfirmedNotificationService orderConfirmedNotificationService;
+    private final OrderCancelledNotificationService orderCancelledNotificationService;
 
     @Scheduled(fixedDelayString =
             "${notification.dispatcher.fixed-delay-ms:5000}")
@@ -75,6 +78,32 @@ public class NotificationDispatcher {
 
                     paymentNotificationService.notifyPaymentStatus(
                             paymentEvent
+                    );
+                }
+
+                case "ORDER_CONFIRMED" -> {
+
+                    OrderStatusNotificationEvent orderEvent =
+                            objectMapper.readValue(
+                                    event.getPayload(),
+                                    OrderStatusNotificationEvent.class
+                            );
+
+                    orderConfirmedNotificationService.notifyOrderConfirmed(
+                            orderEvent
+                    );
+                }
+
+                case "ORDER_CANCELLED" -> {
+
+                    OrderStatusNotificationEvent orderEvent =
+                            objectMapper.readValue(
+                                    event.getPayload(),
+                                    OrderStatusNotificationEvent.class
+                            );
+
+                    orderCancelledNotificationService.notifyOrderCancelled(
+                            orderEvent
                     );
                 }
 

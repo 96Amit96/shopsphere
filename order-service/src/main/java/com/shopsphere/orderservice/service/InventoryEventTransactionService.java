@@ -1,8 +1,6 @@
 package com.shopsphere.orderservice.service;
 
-import com.shopsphere.orderservice.dto.event.InventoryEventType;
-import com.shopsphere.orderservice.dto.event.InventorySagaEvent;
-import com.shopsphere.orderservice.dto.event.PaymentRequestedEvent;
+import com.shopsphere.orderservice.dto.event.*;
 import com.shopsphere.orderservice.entity.Order;
 import com.shopsphere.orderservice.entity.ProcessedEvent;
 import com.shopsphere.orderservice.enums.OrderStatus;
@@ -25,6 +23,7 @@ public class InventoryEventTransactionService {
 
     private final OrderRepository orderRepository;
     private final ProcessedEventRepository processedEventRepository;
+    private final OrderOutboxService orderOutboxService;
 
     @Transactional
     public PaymentRequestedEvent processInventoryEvent(InventorySagaEvent event) {
@@ -73,13 +72,43 @@ public class InventoryEventTransactionService {
         } else if (event.eventType() == InventoryEventType.INVENTORY_RESERVATION_FAILED) {
 
             order.setOrderStatus(OrderStatus.CANCELLED);
-
             order.setSagaStatus(SagaStatus.FAILED);
+
+            String cancellationReason =
+                    event.failureReason() == null || event.failureReason().isBlank()
+                            ? "Inventory reservation failed. The order could not be processed."
+                            : event.failureReason();
 
             log.error(
                     "Inventory reservation failed for orderId :: {}, reason :: {}",
                     event.orderId(),
                     event.failureReason()
+            );
+
+            // Create order cancellation notification event.
+            OrderStatusNotificationEvent notificationEvent =
+                    new OrderStatusNotificationEvent(
+                            UUID.randomUUID(),
+                            order.getId(),
+                            order.getUserId(),
+                            order.getTotalAmount(),
+                            OrderStatus.CANCELLED.name(),
+                            cancellationReason,
+                            order.getItems()
+                                    .stream()
+                                    .map(item -> new OrderItemEvent(
+                                            item.getProductId(),
+                                            item.getProductName(),
+                                            item.getUnitPrice(),
+                                            item.getQuantity()
+                                    ))
+                                    .toList()
+                    );
+            orderOutboxService.saveOrderCancelledEvent(notificationEvent);
+
+            log.info(
+                    "Order cancellation notification recorded in outbox. orderId :: {}",
+                    order.getId()
             );
         }
 

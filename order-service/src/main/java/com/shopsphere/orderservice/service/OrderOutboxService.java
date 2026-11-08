@@ -2,10 +2,7 @@ package com.shopsphere.orderservice.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.shopsphere.orderservice.dto.event.InventoryCompensationRequestedEvent;
-import com.shopsphere.orderservice.dto.event.InventoryDeductionRequestedEvent;
-import com.shopsphere.orderservice.dto.event.OrderCreatedEvent;
-import com.shopsphere.orderservice.dto.event.PaymentRequestedEvent;
+import com.shopsphere.orderservice.dto.event.*;
 import com.shopsphere.orderservice.entity.OrderOutboxEvent;
 import com.shopsphere.orderservice.enums.OrderOutboxStatus;
 import com.shopsphere.orderservice.repository.OrderOutboxEventRepository;
@@ -20,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderOutboxService {
 
     private static final String ORDER_EVENTS_TOPIC = "order-events";
+    private static final String ORDER_STATUS_EVENTS_TOPIC = "order-status-events";
 
     private final OrderOutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
@@ -150,6 +148,58 @@ public class OrderOutboxService {
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException(
                     "Failed to serialize InventoryCompensationRequestedEvent",
+                    exception
+            );
+        }
+    }
+
+    @Transactional
+    public void saveOrderConfirmedEvent(OrderStatusNotificationEvent event) {
+
+        saveOrderStatusNotificationEvent(
+                event,
+                "ORDER_CONFIRMED"
+        );
+    }
+
+    @Transactional
+    public void saveOrderCancelledEvent(OrderStatusNotificationEvent event) {
+
+        saveOrderStatusNotificationEvent(
+                event,
+                "ORDER_CANCELLED"
+        );
+    }
+
+    private void saveOrderStatusNotificationEvent(OrderStatusNotificationEvent event, String eventType) {
+
+        try {
+            String payload = objectMapper.writeValueAsString(event);
+
+            OrderOutboxEvent outboxEvent = new OrderOutboxEvent();
+
+            outboxEvent.setId(event.eventId());
+            outboxEvent.setEventType(eventType);
+            outboxEvent.setAggregateType("ORDER");
+            outboxEvent.setAggregateId(event.orderId());
+            outboxEvent.setTopic(ORDER_STATUS_EVENTS_TOPIC);
+            outboxEvent.setMessageKey(event.orderId().toString());
+            outboxEvent.setPayload(payload);
+            outboxEvent.setStatus(OrderOutboxStatus.PENDING);
+            outboxEvent.setAttempts(0);
+
+            outboxRepository.save(outboxEvent);
+
+            log.info(
+                    "{} saved to outbox. eventId :: {}, orderId :: {}",
+                    eventType,
+                    event.eventId(),
+                    event.orderId()
+            );
+
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException(
+                    "Failed to serialize " + eventType,
                     exception
             );
         }
