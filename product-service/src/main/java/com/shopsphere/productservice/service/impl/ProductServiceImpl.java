@@ -19,6 +19,8 @@ import com.shopsphere.productservice.service.ProductService;
 import com.shopsphere.productservice.service.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -69,6 +71,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "products", key = "#p0")
     public ProductResponse getProductById(Long id) {
 
         Product product = productRepository.findByIdAndStatus(id, ProductStatus.ACTIVE)
@@ -223,6 +226,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = "products", key = "#p0")
     public ProductResponse updateProduct(Long id, ProductUpdateRequest request) {
 
         log.info("product dto {}", request);
@@ -255,6 +259,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = "products", key = "#p0")
     public ProductResponse updateProductStatus(Long id, ProductStatusUpdateRequest request) {
 
         Product product = productRepository.findById(id)
