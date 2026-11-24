@@ -1,10 +1,9 @@
 package com.shopsphere.orderservice.config;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.shopsphere.orderservice.dto.event.PaymentEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,9 +12,9 @@ import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
-import org.springframework.util.backoff.FixedBackOff;
 import org.springframework.kafka.support.serializer.JsonSerializer;
-
+import org.springframework.util.backoff.FixedBackOff;
+import org.apache.kafka.common.TopicPartition;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -27,12 +26,11 @@ public class KafkaErrorHandlingConfig {
     private String bootstrapServers;
 
     // ---------------------------------------------------------
-    // PaymentEvent KafkaTemplate
+    // JSON KafkaTemplate for all event payload types
     // ---------------------------------------------------------
 
     @Bean
-    public KafkaTemplate<String, PaymentEvent>
-    paymentEventKafkaTemplate() {
+    public KafkaTemplate<String, Object> jsonKafkaTemplate() {
 
         Map<String, Object> props = new HashMap<>();
 
@@ -57,12 +55,11 @@ public class KafkaErrorHandlingConfig {
     }
 
     // ---------------------------------------------------------
-    // Raw byte[] KafkaTemplate
+    // Raw byte[] KafkaTemplate for deserialization failures
     // ---------------------------------------------------------
 
     @Bean
-    public KafkaTemplate<String, byte[]>
-    byteArrayKafkaTemplate() {
+    public KafkaTemplate<String, byte[]> byteArrayKafkaTemplate() {
 
         Map<String, Object> props = new HashMap<>();
 
@@ -92,25 +89,35 @@ public class KafkaErrorHandlingConfig {
 
     @Bean
     public DeadLetterPublishingRecoverer deadLetterPublishingRecoverer(
-            KafkaTemplate<String, PaymentEvent> paymentEventKafkaTemplate,
+            @Qualifier("jsonKafkaTemplate")
+            KafkaTemplate<String, Object> jsonKafkaTemplate,
+
+            @Qualifier("byteArrayKafkaTemplate")
             KafkaTemplate<String, byte[]> byteArrayKafkaTemplate
     ) {
 
         Map<Class<?>, KafkaOperations<?, ?>> templates =
                 new LinkedHashMap<>();
 
-        templates.put(
-                PaymentEvent.class,
-                paymentEventKafkaTemplate
-        );
-
+        // Keep byte[] first: a deserialization failure can produce
+        // a null value with the original bytes stored in a header.
         templates.put(
                 byte[].class,
                 byteArrayKafkaTemplate
         );
 
+        // Fallback for all successfully deserialized event DTOs.
+        templates.put(
+                Object.class,
+                jsonKafkaTemplate
+        );
+
         return new DeadLetterPublishingRecoverer(
-                templates
+                templates,
+                (record,exception) -> new TopicPartition(
+                        record.topic() + ".DLT",
+                        record.partition()
+                )
         );
     }
 
@@ -124,15 +131,11 @@ public class KafkaErrorHandlingConfig {
     ) {
 
         FixedBackOff backOff =
-                new FixedBackOff(
-                        2000L,
-                        2L
-                );
+                new FixedBackOff(2000L, 2L);
 
         return new DefaultErrorHandler(
                 recoverer,
                 backOff
         );
     }
-
 }

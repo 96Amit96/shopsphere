@@ -1,3 +1,4 @@
+/*
 package com.shopsphere.orderservice.kafka;
 
 import com.shopsphere.orderservice.dto.event.PaymentRequestedEvent;
@@ -27,3 +28,4 @@ public class PaymentRequestedEventProducer {
         );
     }
 }
+*/

@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
@@ -65,7 +66,8 @@ public class OrderInventoryEventKafkaConsumerConfig {
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, InventorySagaEvent>
     orderInventoryEventKafkaListenerContainerFactory(
-            ConsumerFactory<String, InventorySagaEvent> consumerFactory
+            ConsumerFactory<String, InventorySagaEvent> consumerFactory,
+            DefaultErrorHandler kafkaErrorHandler
     ) {
 
         var factory =
@@ -73,6 +75,8 @@ public class OrderInventoryEventKafkaConsumerConfig {
                         <String, InventorySagaEvent>();
 
         factory.setConsumerFactory(consumerFactory);
+
+        factory.setCommonErrorHandler(kafkaErrorHandler);
 
         return factory;
     }

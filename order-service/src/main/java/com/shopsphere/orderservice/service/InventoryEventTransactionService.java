@@ -26,7 +26,7 @@ public class InventoryEventTransactionService {
     private final OrderOutboxService orderOutboxService;
 
     @Transactional
-    public PaymentRequestedEvent processInventoryEvent(InventorySagaEvent event) {
+    public void processInventoryEvent(InventorySagaEvent event) {
 
         if (processedEventRepository.existsById(event.eventId())) {
 
@@ -36,15 +36,13 @@ public class InventoryEventTransactionService {
                     event.orderId()
             );
 
-            return null;
+            return;
         }
 
         Order order = orderRepository.findById(event.orderId())
                 .orElseThrow(
                         () -> new OrderNotFoundException("Order not found :: " + event.orderId())
                 );
-
-        PaymentRequestedEvent paymentRequestedEvent = null;
 
         if(event.eventType() == InventoryEventType.INVENTORY_RESERVED) {
 
@@ -54,7 +52,8 @@ public class InventoryEventTransactionService {
 
             order.setSagaStatus(SagaStatus.PAYMENT_PENDING);
 
-            paymentRequestedEvent = new PaymentRequestedEvent(
+            PaymentRequestedEvent  paymentRequestedEvent =
+                    new PaymentRequestedEvent(
                     UUID.randomUUID(),
                     event.eventId(),
                     order.getId(),
@@ -64,9 +63,12 @@ public class InventoryEventTransactionService {
                     LocalDateTime.now()
             );
 
+            orderOutboxService.savePaymentRequestedEvent(paymentRequestedEvent);
+
             log.info(
-                    "Inventory reserved successfully. Payment requested for orderId  :: {}",
-                    order.getId()
+                    "Inventory reserved successfully. PaymentRequestedEvent saved atomically. orderId  :: {}, eventId::{}",
+                    order.getId(),
+                    paymentRequestedEvent.eventId()
             );
             
         } else if (event.eventType() == InventoryEventType.INVENTORY_RESERVATION_FAILED) {
@@ -82,7 +84,7 @@ public class InventoryEventTransactionService {
             log.error(
                     "Inventory reservation failed for orderId :: {}, reason :: {}",
                     event.orderId(),
-                    event.failureReason()
+                   cancellationReason
             );
 
             // Create order cancellation notification event.
@@ -126,7 +128,5 @@ public class InventoryEventTransactionService {
                 event.eventId(),
                 event.orderId()
         );
-
-        return paymentRequestedEvent;
     }
 }

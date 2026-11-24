@@ -13,13 +13,13 @@ public class InventoryEventProcessingService {
 
     private final InventoryEventTransactionService inventoryEventTransactionService;
 
-    public PaymentRequestedEvent processInventoryEvent(InventorySagaEvent event) {
+    public void processInventoryEvent(InventorySagaEvent event) {
         log.info(
                 "Processing InventorySagaEvent through Saga. eventId :: {}, orderId :: {}, eventType :: {}",
                 event.eventId(),
                 event.orderId(),
                 event.eventType()
         );
-       return inventoryEventTransactionService.processInventoryEvent(event);
+        inventoryEventTransactionService.processInventoryEvent(event);
     }
 }

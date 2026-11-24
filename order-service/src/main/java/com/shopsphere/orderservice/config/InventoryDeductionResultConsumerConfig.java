@@ -10,6 +10,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
@@ -23,7 +24,8 @@ public class InventoryDeductionResultConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<
                 String, InventoryDeductionResultEvent>
     inventoryDeductionResultKafkaListenerContainerFactory(
-            KafkaProperties kafkaProperties
+            KafkaProperties kafkaProperties,
+            DefaultErrorHandler kafkaErrorHandler
     ) {
         Map<String, Object> props =
                 new HashMap<>(kafkaProperties.buildConsumerProperties());
@@ -82,6 +84,8 @@ public class InventoryDeductionResultConsumerConfig {
         factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties()
                 .setAckMode(ContainerProperties.AckMode.RECORD);
+
+        factory.setCommonErrorHandler(kafkaErrorHandler);
 
         return factory;
     }

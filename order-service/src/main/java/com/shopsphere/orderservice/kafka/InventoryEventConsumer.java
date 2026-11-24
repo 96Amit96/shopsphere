@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
     public class InventoryEventConsumer {
 
         private final InventoryEventProcessingService processingService;
-        private final PaymentRequestedEventProducer paymentRequestedEventProducer;
 
         @KafkaListener(
                 topics = "inventory-events",
@@ -31,10 +30,12 @@ import org.springframework.stereotype.Component;
                     event.eventType()
             );
 
-            PaymentRequestedEvent paymentRequestedEvent = processingService.processInventoryEvent(event);
+            processingService.processInventoryEvent(event);
 
-           if (paymentRequestedEvent != null) {
-               paymentRequestedEventProducer.publishPaymentRequested(paymentRequestedEvent);
-           }
+            log.info(
+                    "InventorySagaEvent processing completed. eventId :: {}, orderId :: {}",
+                    event.eventId(),
+                    event.orderId()
+            );
         }
 }
