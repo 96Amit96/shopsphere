@@ -30,15 +30,6 @@ public class PaymentRequestedEventConsumer {
                 event.paymentMethod()
         );
 
-        /*PaymentMethod paymentMethod = PaymentMethod.valueOf(event.paymentMethod());
-
-        PaymentRequest request = new PaymentRequest(
-                event.orderId(),
-                paymentMethod
-        );
-
-        paymentService.createPayment(request);*/
-
         paymentService.createPaymentFromEvent(event);
 
         log.info(

@@ -14,5 +14,4 @@ public interface PaymentService {
 
     PaymentResponse getPaymentByOrderId(Long orderId);
 
-    PaymentResponse processPayment(Long paymentId);
 }

@@ -42,7 +42,7 @@ public class PaymentController {
                 paymentService.getPaymentById(paymentId);
 
         return ResponseEntity
-                .status(HttpStatus.CREATED)
+                .status(HttpStatus.OK)
                 .body(
                         new ApiResponse<>(
                                 true,
@@ -60,29 +60,11 @@ public class PaymentController {
                 paymentService.getPaymentByOrderId(orderId);
 
         return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(
-                        new ApiResponse<>(
-                                true,
-                                "Payment retrieved successfully",
-                                response
-                        )
-                );
-    }
-
-    @PostMapping("/{paymentId}/process")
-    public ResponseEntity<ApiResponse<PaymentResponse>> processPayment(
-            @PathVariable Long paymentId) {
-
-        PaymentResponse response =
-                paymentService.processPayment(paymentId);
-
-        return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(
                         new ApiResponse<>(
                                 true,
-                                "Payment processed successfully",
+                                "Payment retrieved successfully",
                                 response
                         )
                 );
