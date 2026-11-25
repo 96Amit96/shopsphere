@@ -1,0 +1,19 @@
+package com.shopsphere.paymentservice.config;
+
+import com.razorpay.RazorpayClient;
+import com.razorpay.RazorpayException;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableConfigurationProperties(RazorpayProperties.class)
+public class RazorpayConfig {
+
+    public RazorpayClient razorpayClient(RazorpayProperties properties) throws RazorpayException {
+
+        return new RazorpayClient(
+                properties.keyId(),
+                properties.keySecret()
+        );
+    }
+}

@@ -57,3 +57,7 @@ jwt:
   secret: gIwzftaZLAtQbMsCROtusFXFULfPKpR+XGNQk8xf1i0=
   expiration: 900000              # 15 minutes
   refresh-expiration: 604800000   # 7 days
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID}
+  key-secret: ${RAZORPAY_KEY_SECRET}
