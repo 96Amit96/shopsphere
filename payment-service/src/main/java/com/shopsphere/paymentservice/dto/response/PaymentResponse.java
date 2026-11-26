@@ -15,6 +15,7 @@ public record PaymentResponse(
         PaymentMethod paymentMethod,
         PaymentStatus paymentStatus,
         String transactionId,
+        String razorpayOrderId,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

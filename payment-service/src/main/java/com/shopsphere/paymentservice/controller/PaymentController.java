@@ -1,10 +1,10 @@
 package com.shopsphere.paymentservice.controller;
 
-import com.shopsphere.paymentservice.dto.request.PaymentRequest;
 import com.shopsphere.paymentservice.dto.response.ApiResponse;
 import com.shopsphere.paymentservice.dto.response.PaymentResponse;
+import com.shopsphere.paymentservice.dto.response.RazorpayOrderResponse;
 import com.shopsphere.paymentservice.service.PaymentService;
-import jakarta.validation.Valid;
+import com.shopsphere.paymentservice.service.RazorpayOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,23 +16,7 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
 
     private final PaymentService paymentService;
-
-    @PostMapping
-    public ResponseEntity<ApiResponse<PaymentResponse>> createPayment(
-            @Valid @RequestBody PaymentRequest request
-            ) {
-        PaymentResponse response = paymentService.createPayment(request);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(
-                        new ApiResponse<>(
-                                true,
-                                "Payment created successfully",
-                                response
-                        )
-                );
-    }
+    private final RazorpayOrderService razorpayOrderService;
 
     @GetMapping("/{paymentId}")
     public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentById(
@@ -68,5 +52,20 @@ public class PaymentController {
                                 response
                         )
                 );
+    }
+
+    @PostMapping("/{paymentId}/razorpay-order")
+    public ResponseEntity<ApiResponse<RazorpayOrderResponse>> createRazorpayOrder(
+            @PathVariable Long paymentId) {
+
+        RazorpayOrderResponse response =
+                razorpayOrderService.createRazorpayOrder(paymentId);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        "Razorpay order created successfully",
+                        response
+                ));
     }
 }

@@ -6,8 +6,6 @@ import com.shopsphere.paymentservice.dto.response.PaymentResponse;
 
 public interface PaymentService {
 
-    PaymentResponse createPayment(PaymentRequest request);
-
     PaymentResponse createPaymentFromEvent(PaymentRequestedEvent event);
 
     PaymentResponse getPaymentById(Long paymentId);

@@ -2,12 +2,10 @@ package com.shopsphere.paymentservice.service.impl;
 
 import com.shopsphere.paymentservice.client.OrderClient;
 import com.shopsphere.paymentservice.dto.event.PaymentRequestedEvent;
-import com.shopsphere.paymentservice.dto.request.PaymentRequest;
 import com.shopsphere.paymentservice.dto.response.*;
 import com.shopsphere.paymentservice.entity.Payment;
 import com.shopsphere.paymentservice.enums.PaymentMethod;
 import com.shopsphere.paymentservice.enums.PaymentStatus;
-import com.shopsphere.paymentservice.exception.DuplicatePaymentException;
 import com.shopsphere.paymentservice.exception.PaymentNotFoundException;
 import com.shopsphere.paymentservice.exception.PaymentValidationException;
 import com.shopsphere.paymentservice.mapper.PaymentMapper;
@@ -30,58 +28,6 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final OrderClient orderClient;
 
-    @Override
-    @Transactional
-    public PaymentResponse createPayment(PaymentRequest request) {
-
-        log.info("Creating payment for orderId :: {}", request.orderId());
-
-           ApiResponse<OrderResponse> orderResponse =
-                   orderClient.getOrderById(request.orderId());
-
-        if (orderResponse == null ||
-                orderResponse.data() == null) {
-
-            throw new PaymentNotFoundException(
-                    "Order not found with id :: "
-                            + request.orderId()
-            );
-        }
-
-        OrderResponse order = orderResponse.data();
-        log.info("Order :: {} ", order);
-
-        // 1. Check duplicate payment
-        if (paymentRepository.existsByOrderId(request.orderId())) {
-            throw new DuplicatePaymentException("Payment already exists for orderId :: "+ request.orderId());
-        }
-
-        // 2. Create Payment entity
-        Payment payment = new Payment();
-
-        payment.setOrderId(order.id());
-        payment.setUserId(order.userId());
-        payment.setAmount(order.totalAmount());
-        payment.setPaymentMethod(request.paymentMethod());
-        payment.setPaymentStatus(PaymentStatus.PENDING);
-
-        // 3. Generate transaction ID
-        payment.setTransactionId(
-                "TXN-"+ UUID.randomUUID()
-        );
-
-        // 4. Save payment
-        Payment savedPayment = paymentRepository.save(payment);
-
-        log.info(
-                "Payment created successfully. paymentId :: {}, transactionId :: {}",
-                savedPayment.getId(),
-                savedPayment.getTransactionId()
-        );
-
-
-        return paymentMapper.toPaymentResponse(savedPayment);
-    }
 
     @Override
     @Transactional(readOnly = true)
